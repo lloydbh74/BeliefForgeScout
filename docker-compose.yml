@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  scout-app:
+    build:
+      context: .
+      dockerfile: scout/Dockerfile
+    container_name: scout_app
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./scout:/app/scout # Hot reload for development
+      - ./scout_db_data:/app/data # Persist SQLite DB
+    environment:
+      - SCOUT_DB_PATH=/app/data/scout.db
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped

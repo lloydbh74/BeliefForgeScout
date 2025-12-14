@@ -1,0 +1,97 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables & secrets
+.env
+.env.local
+.env.*.local
+settings.json
+
+# Data directories (contains sensitive data)
+data/logs/*.log
+data/logs/*.csv
+data/db/*.db
+data/db/*.db-journal
+data/cookies.json
+
+# Keep directory structure but ignore contents
+!data/logs/.gitkeep
+!data/db/.gitkeep
+
+# Docker
+*.tar.gz
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+
+# Logs
+*.log
+
+# Database
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Playwright
+playwright/.cache/
+
+# Browser profiles (Playwright)
+browser_profile/
+
+# Backups
+backups/
+*.backup
