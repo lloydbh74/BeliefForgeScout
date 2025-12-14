@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Twitter Bot Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#7344c5",
+                        "background-light": "#f7f6f8",
+                        "background-dark": "#18141e",
+                        "card-dark": "#2f2b36",
+                        "border-dark": "#45404f"
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-size: 24px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
+<!-- Navigation Drawer (Hidden by default) -->
+<div class="absolute left-0 top-0 z-50 size-full min-h-screen bg-black/40 hidden">
+<div class="flex h-full min-h-screen w-10/12 flex-col gap-4 bg-background-dark p-4">
+<p class="text-white text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-2 pt-4">@elonmusk</p>
+<ul class="flex flex-col gap-2">
+<li class="flex h-12 items-center gap-4 rounded-xl px-4 bg-primary/30">
+<span class="material-symbols-outlined text-white">dashboard</span>
+<p class="text-white text-base font-bold leading-tight truncate">Dashboard</p>
+</li>
+<li class="flex h-12 items-center gap-4 rounded-xl px-4">
+<span class="material-symbols-outlined text-white/70">settings</span>
+<p class="text-white/70 text-base font-bold leading-tight truncate">Settings</p>
+</li>
+<li class="flex h-12 items-center gap-4 rounded-xl px-4">
+<span class="material-symbols-outlined text-white/70">rate_review</span>
+<p class="text-white/70 text-base font-bold leading-tight truncate">Review</p>
+</li>
+<li class="flex h-12 items-center gap-4 rounded-xl px-4">
+<span class="material-symbols-outlined text-white/70">analytics</span>
+<p class="text-white/70 text-base font-bold leading-tight truncate">Analytics</p>
+</li>
+</ul>
+<div class="mt-auto">
+<li class="flex h-12 items-center gap-4 rounded-xl px-4">
+<span class="material-symbols-outlined text-white/70">logout</span>
+<p class="text-white/70 text-base font-bold leading-tight truncate">Logout</p>
+</li>
+</div>
+</div>
+</div>
+<main class="w-full">
+<!-- Top App Bar -->
+<div class="flex items-center bg-background-dark p-4 pb-2 justify-between sticky top-0 z-40">
+<button class="flex items-center justify-center size-10 rounded-full">
+<span class="material-symbols-outlined text-white">menu</span>
+</button>
+<div class="flex items-center gap-2">
+<h2 class="text-white text-lg font-bold leading-tight tracking-[-0.015em]">Dashboard</h2>
+<div class="size-3 rounded-full bg-green-500 border-2 border-background-dark"></div>
+</div>
+<button class="flex items-center justify-center size-10 rounded-full">
+<img alt="User profile picture" class="size-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnMxvvK5n8Zdeky-ihbz1E7f1B9ILj-XCg11H0oa6nfkDOz5vuyvNUsrP-f8-vd18N1aDwb0FW6DXAscZpplNEvgQCkoTuI7vy6BC54bCDeJ19UQ30DR90rXOyhT2Sl4UZvx0BggnBhbIlJqR6_h4J0bv0pm8cURAsYpgO6OeJaR8I3rzrNaG4xtkNMz-kH8UOcp193e79BOeyYoWtuG3qQnI3s5kNRUYD_zkyeB8hZ37W4tKIF1g3qSRino9t29a8ztlo4ynFjpjs"/>
+</button>
+</div>
+<div class="p-4 space-y-6">
+<!-- Stats Grid -->
+<div class="grid grid-cols-2 gap-4">
+<div class="flex flex-col gap-2 rounded-xl p-4 bg-card-dark border border-border-dark">
+<p class="text-white/70 text-sm font-medium leading-normal">Tweets Scraped</p>
+<p class="text-white tracking-light text-2xl font-bold leading-tight">1,204</p>
+<p class="text-green-400 text-sm font-medium leading-normal">+15%</p>
+</div>
+<div class="flex flex-col gap-2 rounded-xl p-4 bg-card-dark border border-border-dark">
+<p class="text-white/70 text-sm font-medium leading-normal">Replies Pending</p>
+<p class="text-white tracking-light text-2xl font-bold leading-tight">88</p>
+<p class="text-red-400 text-sm font-medium leading-normal">-5%</p>
+</div>
+<div class="flex flex-col gap-2 rounded-xl p-4 bg-card-dark border border-border-dark">
+<p class="text-white/70 text-sm font-medium leading-normal">Success Rate</p>
+<p class="text-white tracking-light text-2xl font-bold leading-tight">97.5%</p>
+<p class="text-green-400 text-sm font-medium leading-normal">+0.2%</p>
+</div>
+<div class="flex flex-col gap-2 rounded-xl p-4 bg-card-dark border border-border-dark">
+<p class="text-white/70 text-sm font-medium leading-normal">Status</p>
+<p class="text-white tracking-light text-2xl font-bold leading-tight">Active</p>
+<p class="text-white/70 text-sm font-medium leading-normal">24/7</p>
+</div>
+</div>
+<!-- Chart -->
+<div class="flex flex-col gap-2 rounded-xl border border-border-dark p-4 bg-card-dark">
+<p class="text-white text-base font-medium leading-normal">Scraping Activity</p>
+<p class="text-white/70 text-sm font-normal leading-normal">Last 7 Days</p>
+<div class="flex min-h-[180px] flex-1 flex-col gap-4 py-4">
+<svg fill="none" height="148" preserveaspectratio="none" viewbox="-3 0 478 150" width="100%" xmlns="http://www.w3.org/2000/svg">
+<path d="M0 109C18.1538 109 18.1538 21 36.3077 21C54.4615 21 54.4615 41 72.6154 41C90.7692 41 90.7692 93 108.923 93C127.077 93 127.077 33 145.231 33C163.385 33 163.385 101 181.538 101C199.692 101 199.692 61 217.846 61C236 61 236 45 254.154 45C272.308 45 272.308 121 290.462 121C308.615 121 308.615 149 326.769 149C344.923 149 344.923 1 363.077 1C381.231 1 381.231 81 399.385 81C417.538 81 417.538 129 435.692 129C453.846 129 453.846 25 472 25V149H0V109Z" fill="url(#paint0_linear_chart)"></path>
+<path d="M0 109C18.1538 109 18.1538 21 36.3077 21C54.4615 21 54.4615 41 72.6154 41C90.7692 41 90.7692 93 108.923 93C127.077 93 127.077 33 145.231 33C163.385 33 163.385 101 181.538 101C199.692 101 199.692 61 217.846 61C236 61 236 45 254.154 45C272.308 45 272.308 121 290.462 121C308.615 121 308.615 149 326.769 149C344.923 149 344.923 1 363.077 1C381.231 1 381.231 81 399.385 81C417.538 81 417.538 129 435.692 129C453.846 129 453.846 25 472 25" stroke="#7344c5" stroke-linecap="round" stroke-width="3"></path>
+<defs>
+<lineargradient gradientunits="userSpaceOnUse" id="paint0_linear_chart" x1="236" x2="236" y1="1" y2="149">
+<stop stop-color="#7344c5" stop-opacity="0.3"></stop>
+<stop offset="1" stop-color="#7344c5" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+</svg>
+<div class="flex justify-around">
+<p class="text-white/50 text-[13px] font-bold leading-normal">Mon</p>
+<p class="text-white/50 text-[13px] font-bold leading-normal">Tue</p>
+<p class="text-white/50 text-[13px] font-bold leading-normal">Wed</p>
+<p class="text-white/50 text-[13px] font-bold leading-normal">Thu</p>
+<p class="text-white/50 text-[13px] font-bold leading-normal">Fri</p>
+<p class="text-white/50 text-[13px] font-bold leading-normal">Sat</p>
+<p class="text-white/50 text-[13px] font-bold leading-normal">Sun</p>
+</div>
+</div>
+</div>
+<!-- Quick Actions -->
+<div class="flex flex-col gap-3 rounded-xl">
+<h3 class="text-white text-lg font-bold leading-tight tracking-[-0.015em]">Quick Actions</h3>
+<div class="flex flex-col gap-3">
+<button class="flex items-center justify-center rounded-xl h-12 bg-primary text-white gap-2 text-base font-bold leading-normal tracking-[0.015em] w-full">
+<span class="material-symbols-outlined">pause</span>
+                            Stop Bot
+                        </button>
+<button class="flex items-center justify-center rounded-xl h-12 bg-primary/20 text-white gap-2 text-base font-bold leading-normal tracking-[0.015em] w-full">
+<span class="material-symbols-outlined">pending</span>
+                             View Pending Replies
+                        </button>
+<button class="flex items-center justify-center rounded-xl h-12 bg-red-500/20 text-red-400 gap-2 text-base font-bold leading-normal tracking-[0.015em] w-full">
+<span class="material-symbols-outlined">power_settings_new</span>
+                             Emergency Stop
+                        </button>
+</div>
+</div>
+<!-- Activity Feed -->
+<div class="flex flex-col gap-4">
+<h3 class="text-white text-lg font-bold leading-tight tracking-[-0.015em]">Real-time Activity Feed</h3>
+<div class="flex flex-col gap-4">
+<div class="flex items-center gap-4">
+<div class="flex size-10 items-center justify-center rounded-full bg-primary/20">
+<span class="material-symbols-outlined text-primary">reply</span>
+</div>
+<div class="flex-1">
+<p class="text-white text-sm font-medium">Replied to @VitalikButerin</p>
+<p class="text-white/50 text-xs">2 minutes ago</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex size-10 items-center justify-center rounded-full bg-primary/20">
+<span class="material-symbols-outlined text-primary">search</span>
+</div>
+<div class="flex-1">
+<p class="text-white text-sm font-medium">Scraped 50 new tweets</p>
+<p class="text-white/50 text-xs">5 minutes ago</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex size-10 items-center justify-center rounded-full bg-primary/20">
+<span class="material-symbols-outlined text-primary">pause_circle</span>
+</div>
+<div class="flex-1">
+<p class="text-white text-sm font-medium">Bot paused by user</p>
+<p class="text-white/50 text-xs">1 hour ago</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex size-10 items-center justify-center rounded-full bg-primary/20">
+<span class="material-symbols-outlined text-primary">play_circle</span>
+</div>
+<div class="flex-1">
+<p class="text-white text-sm font-medium">Bot started successfully</p>
+<p class="text-white/50 text-xs">8 hours ago</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

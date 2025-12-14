@@ -118,3 +118,74 @@ class RedditScout:
         TODO: Implement persistence logic.
         """
         return False # Not on cooldown
+        
+    def scan_my_history(self, limit: int = 20) -> List[dict]:
+        """
+        Profile Watcher: Fetch recent comments.
+        Supports both Authenticated (user.me) and Read-Only (redditor name) modes.
+        """
+        engagements = []
+        try:
+            # 1. Try Authenticated User
+            user = self.reddit.user.me()
+            
+            # 2. If Read-Only, try Configured Username
+            if not user:
+                target_user = config.settings.get("reddit_username")
+                if target_user:
+                    user = self.reddit.redditor(target_user)
+            
+            if not user:
+                logger.warning("Cannot scan: No authenticated user AND no 'reddit_username' in settings.")
+                return []
+                
+            # Fetch comments (works for both me and redditor objects)
+            logger.info(f"Scanning profile: {user}")
+            
+            # Limit to last 14 days roughly (fetching more to be safe then filtering)
+            cutoff_date = datetime.now() - timedelta(days=14)
+            comments_stream = user.comments.new(limit=limit)
+
+            for comment in comments_stream:
+                # 1. Date Check (Optimization: Stop processing if way too old? 
+                # PRAW new() is ordered, so once we hit old posts we could break, 
+                # but 'limit' is small so simple filter is safer)
+                created_dt = datetime.fromtimestamp(comment.created_utc)
+                if created_dt < cutoff_date:
+                    continue
+
+                # Refresh to get latest replies/score
+                try:
+                    comment.refresh()
+                except Exception as e:
+                    # Sometimes refresh fails on deleted content
+                    continue
+                
+                # Check for "Handshake" (Reply from OP)
+                has_handshake = False
+                try:
+                    submission_author = comment.submission.author
+                    if submission_author:
+                        comment.replies.replace_more(limit=0)
+                        for reply in comment.replies:
+                            if reply.author == submission_author:
+                                has_handshake = True
+                                break
+                except:
+                    pass # Deleted/removed context
+                            
+                engagements.append({
+                    "id": comment.id,
+                    "post_id": comment.submission.id,
+                    "subreddit": comment.subreddit.display_name,
+                    "body": comment.body[:100],
+                    "score": comment.score,
+                    "replies": len(comment.replies),
+                    "created_utc": comment.created_utc,
+                    "handshake": has_handshake
+                })
+                
+        except Exception as e:
+            logger.error(f"Profile scan failed: {e}")
+            
+        return engagements

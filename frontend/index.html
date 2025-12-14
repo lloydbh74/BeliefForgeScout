@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Belief Forge Bot Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+    <!-- Chart.js removed - now using CSS-based charts -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 text-gray-900">
+    <div id="app" class="min-h-screen">
+        <!-- Notification Container -->
+        <div id="notification-container" class="fixed top-4 right-4 z-50 space-y-2 pointer-events-none"></div>
+        <!-- Navigation -->
+        <nav class="bg-white shadow-sm border-b border-gray-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex">
+                        <div class="flex-shrink-0 flex items-center">
+                            <h1 class="text-xl font-bold text-purple-600">Belief Forge Bot</h1>
+                        </div>
+                        <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                            <a href="#" data-page="dashboard"
+                                class="nav-link border-purple-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                Dashboard
+                            </a>
+                            <a href="#" data-page="settings"
+                                class="nav-link border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                Settings
+                            </a>
+                            <a href="#" data-page="review"
+                                class="nav-link border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                Review
+                            </a>
+                            <a href="#" data-page="analytics"
+                                class="nav-link border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                Analytics
+                            </a>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="flex items-center space-x-2 bot-status mr-2 sm:mr-0">
+                            <div class="w-2 h-2 bg-green-500 rounded-full bot-status-dot"></div>
+                            <span class="text-sm text-gray-600 bot-status-text hidden sm:inline">Bot Active</span>
+                        </div>
+
+                        <!-- Mobile menu button -->
+                        <div class="flex items-center sm:hidden ml-2">
+                            <button onclick="toggleMobileMenu()" type="button"
+                                class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-purple-500"
+                                aria-controls="mobile-menu" aria-expanded="false">
+                                <span class="sr-only">Open main menu</span>
+                                <span class="material-symbols-outlined">menu</span>
+                            </button>
+                        </div>
+
+                        <div class="ml-3 relative hidden sm:block">
+                            <button onclick="toggleUserMenu()"
+                                class="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                                <img class="h-8 w-8 rounded-full"
+                                    src="https://ui-avatars.com/api/?name=User&background=7344c5&color=fff" alt="User">
+                            </button>
+                            <div id="userMenu"
+                                class="hidden origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                                <div class="py-1">
+                                    <a href="#" onclick="logout()"
+                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Logout</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile menu, show/hide based on menu state. -->
+            <div class="hidden sm:hidden" id="mobile-menu">
+                <div class="pt-2 pb-3 space-y-1">
+                    <a href="#" data-page="dashboard" onclick="toggleMobileMenu()"
+                        class="mobile-nav-link bg-purple-50 border-purple-500 text-purple-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">Dashboard</a>
+                    <a href="#" data-page="settings" onclick="toggleMobileMenu()"
+                        class="mobile-nav-link border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">Settings</a>
+                    <a href="#" data-page="review" onclick="toggleMobileMenu()"
+                        class="mobile-nav-link border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">Review</a>
+                    <a href="#" data-page="analytics" onclick="toggleMobileMenu()"
+                        class="mobile-nav-link border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">Analytics</a>
+                </div>
+                <div class="pt-4 pb-4 border-t border-gray-200">
+                    <div class="flex items-center px-4">
+                        <div class="flex-shrink-0">
+                            <img class="h-10 w-10 rounded-full"
+                                src="https://ui-avatars.com/api/?name=User&background=7344c5&color=fff" alt="User">
+                        </div>
+                        <div class="ml-3">
+                            <div class="text-base font-medium text-gray-800">Admin User</div>
+                            <div class="text-sm font-medium text-gray-500">admin@beliefforge.com</div>
+                        </div>
+                    </div>
+                    <div class="mt-3 space-y-1">
+                        <a href="#" onclick="logout()"
+                            class="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100">Sign
+                            out</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- Dashboard Page -->
+            <div id="dashboard-page" class="page">
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+                    <div class="bg-white overflow-hidden shadow rounded-lg">
+                        <div class="p-5">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0">
+                                    <span class="material-symbols-outlined text-purple-600">search</span>
+                                </div>
+                                <div class="ml-5 w-0 flex-1">
+                                    <dl>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">Content Scraped</dt>
+                                        <dd class="text-lg font-medium text-gray-900" id="tweets-scraped">Loading...
+                                        </dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 px-5 py-3">
+                            <div class="text-sm flex justify-between items-center" id="scraped-breakdown">
+                                <span class="text-gray-500">Loading breakdown...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white overflow-hidden shadow rounded-lg">
+                        <div class="p-5">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0">
+                                    <span class="material-symbols-outlined text-purple-600">pending</span>
+                                </div>
+                                <div class="ml-5 w-0 flex-1">
+                                    <dl>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">Replies Pending</dt>
+                                        <dd class="text-lg font-medium text-gray-900" id="replies-pending">Loading...
+                                        </dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 px-5 py-3">
+                            <div class="text-sm">
+                                <span class="text-red-600 font-medium">Requires review</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white overflow-hidden shadow rounded-lg">
+                        <div class="p-5">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0">
+                                    <span class="material-symbols-outlined text-purple-600">check_circle</span>
+                                </div>
+                                <div class="ml-5 w-0 flex-1">
+                                    <dl>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">Success Rate</dt>
+                                        <dd class="text-lg font-medium text-gray-900" id="success-rate">Loading...</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 px-5 py-3">
+                            <div class="text-sm">
+                                <span class="text-green-600 font-medium">+0.2%</span>
+                                <span class="text-gray-500"> from last week</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white overflow-hidden shadow rounded-lg">
+                        <div class="p-5">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0">
+                                    <span class="material-symbols-outlined text-purple-600">schedule</span>
+                                </div>
+                                <div class="ml-5 w-0 flex-1">
+                                    <dl>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">Active Hours</dt>
+                                        <dd class="text-lg font-medium text-gray-900" id="active-hours">Loading...</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 px-5 py-3">
+                            <div class="text-sm">
+                                <span class="text-green-600 font-medium">UK Time</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart and Quick Actions -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Chart -->
+                    <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">Scraping Activity</h3>
+                        <p class="text-sm text-gray-500 mb-4">Last 7 days</p>
+                        <div id="activityChart" style="height: 220px;"></div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
+
+                        <!-- Platform Toggles -->
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <div
+                                class="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
+                                <span class="text-xs font-medium text-gray-700">Twitter</span>
+                                <button id="toggle-twitter-btn"
+                                    class="relative inline-flex flex-shrink-0 h-5 w-9 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 bg-gray-200"
+                                    role="switch" aria-checked="false">
+                                    <span aria-hidden="true"
+                                        class="pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200 translate-x-0"></span>
+                                </button>
+                            </div>
+                            <div
+                                class="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
+                                <span class="text-xs font-medium text-gray-700">Reddit</span>
+                                <button id="toggle-reddit-btn"
+                                    class="relative inline-flex flex-shrink-0 h-5 w-9 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 bg-gray-200"
+                                    role="switch" aria-checked="false">
+                                    <span aria-hidden="true"
+                                        class="pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200 translate-x-0"></span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <button id="toggle-bot-btn"
+                                class="w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700">
+                                <span class="material-symbols-outlined mr-2">pause</span>
+                                <span id="toggle-bot-text">Pause Bot</span>
+                            </button>
+                            <button onclick="app.showPage('review')"
+                                class="w-full flex justify-center items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                                <span class="material-symbols-outlined mr-2">rate_review</span>
+                                Review Replies
+                            </button>
+                            <button id="emergency-stop-btn"
+                                class="w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700">
+                                <span class="material-symbols-outlined mr-2">power_settings_new</span>
+                                Emergency Stop
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity Feed -->
+                <div class="mt-6 bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
+                    <div id="activity-feed" class="space-y-4">
+                        <!-- Activity items will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Page (Tabbed UI) -->
+            <div id="settings-page" class="page hidden">
+                <div class="bg-white shadow rounded-lg px-4 py-5 sm:p-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-6">Bot Settings</h3>
+
+                    <!-- Tab Navigation -->
+                    <div class="border-b border-gray-200 mb-6">
+                        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                            <button onclick="switchSettingsTab('discovery')" id="btn-tab-discovery"
+                                class="settings-tab-btn border-purple-500 text-purple-600 bg-purple-50 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm w-1/3 hover:bg-gray-50 rounded-t-lg transition-colors duration-200">
+                                Discovery (Sources)
+                            </button>
+                            <button onclick="switchSettingsTab('filters')" id="btn-tab-filters"
+                                class="settings-tab-btn border-transparent text-gray-500 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm w-1/3 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50 rounded-t-lg transition-colors duration-200">
+                                Filters & Quality
+                            </button>
+                            <button onclick="switchSettingsTab('system')" id="btn-tab-system"
+                                class="settings-tab-btn border-transparent text-gray-500 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm w-1/3 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50 rounded-t-lg transition-colors duration-200">
+                                System & Auth
+                            </button>
+                        </nav>
+                    </div>
+
+                    <!-- TAB 1: DISCOVERY -->
+                    <div id="tab-discovery" class="settings-tab-content space-y-6">
+                        <!-- Global Keywords -->
+                        <div class="border border-gray-200 rounded-lg overflow-hidden">
+                            <button onclick="toggleSettingsSection('keywords')"
+                                class="w-full flex justify-between items-center px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors duration-200">
+                                <span class="font-medium text-gray-900">Global Keywords (All Platforms)</span>
+                                <span id="icon-keywords"
+                                    class="material-symbols-outlined text-gray-500 transition-transform duration-200">expand_less</span>
+                            </button>
+                            <div id="section-keywords" class="p-4 border-t border-gray-200">
+                                <p class="text-xs text-gray-500 mb-3">Topic keywords used to find relevant conversations
+                                    on both Twitter and Reddit.</p>
+                                <div id="keywords-container" class="space-y-2 mb-3"></div>
+                                <button onclick="addKeyword()"
+                                    class="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50">
+                                    <span class="material-symbols-outlined text-sm align-middle mr-1">add</span> Add
+                                    Keyword
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Twitter Sources -->
+                        <div class="border border-gray-200 rounded-lg overflow-hidden">
+                            <button onclick="toggleSettingsSection('twitter-src')"
+                                class="w-full flex justify-between items-center px-4 py-3 bg-blue-50 hover:bg-blue-100 transition-colors duration-200">
+                                <span class="font-medium text-blue-900 flex items-center">
+                                    <span class="material-symbols-outlined text-blue-500 mr-2 text-sm">tag</span>
+                                    Twitter Sources
+                                </span>
+                                <span id="icon-twitter-src"
+                                    class="material-symbols-outlined text-blue-500 transition-transform duration-200">expand_more</span>
+                            </button>
+                            <div id="section-twitter-src" class="p-4 border-t border-gray-200 hidden">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Target Hashtags</label>
+                                <div id="hashtags-container" class="space-y-2 mb-3"></div>
+                                <button onclick="addHashtag()"
+                                    class="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50">
+                                    <span class="material-symbols-outlined text-sm align-middle mr-1">add</span> Add
+                                    Hashtag
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Reddit Sources -->
+                        <div class="border border-gray-200 rounded-lg overflow-hidden">
+                            <button onclick="toggleSettingsSection('reddit-src')"
+                                class="w-full flex justify-between items-center px-4 py-3 bg-orange-50 hover:bg-orange-100 transition-colors duration-200">
+                                <span class="font-medium text-orange-900 flex items-center">
+                                    <span class="material-symbols-outlined text-orange-500 mr-2 text-sm">forum</span>
+                                    Reddit Sources
+                                </span>
+                                <span id="icon-reddit-src"
+                                    class="material-symbols-outlined text-orange-500 transition-transform duration-200">expand_more</span>
+                            </button>
+                            <div id="section-reddit-src" class="p-4 border-t border-gray-200 hidden">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Target Subreddits</label>
+                                <div id="subreddits-container" class="space-y-2 mb-3"></div>
+                                <button onclick="addSubreddit()"
+                                    class="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50">
+                                    <span class="material-symbols-outlined text-sm align-middle mr-1">add</span> Add
+                                    Subreddit
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: FILTERS -->
+                    <div id="tab-filters" class="settings-tab-content space-y-6 hidden">
+                        <!-- Universal Filters -->
+                        <div class="border border-gray-200 rounded-lg overflow-hidden">
+                            <button onclick="toggleSettingsSection('universal-filters')"
+                                class="w-full flex justify-between items-center px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors duration-200">
+                                <span class="font-medium text-gray-900">Universal Quality Filters</span>
+                                <span id="icon-universal-filters"
+                                    class="material-symbols-outlined text-gray-500 transition-transform duration-200">expand_less</span>
+                            </button>
+                            <div id="section-universal-filters"
+                                class="p-4 border-t border-gray-200 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Min. Engagement
+                                        (Likes/Upvotes)</label>
+                                    <input type="number" id="min-likes" value="2"
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Min. Replies/Comments</label>
+                                    <input type="number" id="min-replies" value="1"
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Min. Age (hours)</label>
+                                    <input type="number" id="min-age-hours" value="1"
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Max. Age (hours)</label>
+                                    <input type="number" id="max-age-hours" value="72"
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                                </div>
+
+                                <!-- Content Length -->
+                                <div class="col-span-2 border-t border-gray-100 my-2 pt-2">
+                                    <h4 class="text-sm font-medium text-gray-900 mb-2">Content Length Rules</h4>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Min. Content Length</label>
+                                    <input type="number" id="min-length" value="10"
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Max. Length (Twitter)</label>
+                                    <input type="number" id="max-length" value="280"
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Max. Length (Reddit)</label>
+                                    <input type="number" id="reddit-max-length" value="10000"
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Banned Keywords -->
+                        <div class="border border-gray-200 rounded-lg overflow-hidden">
+                            <button onclick="toggleSettingsSection('banned-keywords')"
+                                class="w-full flex justify-between items-center px-4 py-3 bg-red-50 hover:bg-red-100 transition-colors duration-200">
+                                <span class="font-medium text-red-900 flex items-center">
+                                    <span class="material-symbols-outlined text-red-500 mr-2 text-sm">block</span>
+                                    Banned Keywords
+                                </span>
+                                <span id="icon-banned-keywords"
+                                    class="material-symbols-outlined text-red-500 transition-transform duration-200">expand_less</span>
+                            </button>
+                            <div id="section-banned-keywords" class="p-4 border-t border-gray-200">
+                                <p class="text-xs text-gray-500 mb-3">Posts containing these words will be automatically
+                                    rejected.</p>
+                                <div id="banned-keywords-container" class="space-y-2 mb-3"></div>
+                                <button onclick="window.settings.addItem('banned_keywords')"
+                                    class="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50">
+                                    <span class="material-symbols-outlined text-sm align-middle mr-1">add</span> Add
+                                    Keyword
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Platform Specific Filters -->
+                        <div class="border border-gray-200 rounded-lg overflow-hidden">
+                            <button onclick="toggleSettingsSection('twitter-filters')"
+                                class="w-full flex justify-between items-center px-4 py-3 bg-blue-50 hover:bg-blue-100 transition-colors duration-200">
+                                <span class="font-medium text-blue-900 flex items-center">
+                                    <span class="material-symbols-outlined text-blue-500 mr-2 text-sm">filter_alt</span>
+                                    Twitter Only Filters
+                                </span>
+                                <span id="icon-twitter-filters"
+                                    class="material-symbols-outlined text-blue-500 transition-transform duration-200">expand_more</span>
+                            </button>
+                            <div id="section-twitter-filters"
+                                class="p-4 border-t border-gray-200 hidden grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Min. Author Followers</label>
+                                    <input type="number" id="min-followers" value="200"
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Max. Author Followers</label>
+                                    <input type="number" id="max-followers" value="50000"
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: SYSTEM -->
+                    <div id="tab-system" class="settings-tab-content space-y-6 hidden">
+                        <!-- Authentication -->
+                        <div class="border border-gray-200 rounded-lg overflow-hidden">
+                            <button onclick="toggleSettingsSection('auth')"
+                                class="w-full flex justify-between items-center px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors duration-200">
+                                <span class="font-medium text-gray-900">Authentication</span>
+                                <span id="icon-auth"
+                                    class="material-symbols-outlined text-gray-500 transition-transform duration-200">expand_less</span>
+                            </button>
+                            <div id="section-auth" class="p-4 border-t border-gray-200 space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Twitter Cookies
+                                        (JSON)</label>
+                                    <textarea id="twitter-cookies" rows="3"
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                                        placeholder="Paste cookies JSON..."></textarea>
+                                </div>
+                                <div class="flex items-center space-x-4">
+                                    <div class="flex items-center">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                                        <span class="text-sm text-gray-600">Cookie Status: Valid</span>
+                                    </div>
+                                    <button onclick="validateCookies()"
+                                        class="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50">Validate
+                                        Cookies</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Scheduling -->
+                        <div class="border border-gray-200 rounded-lg overflow-hidden">
+                            <button onclick="toggleSettingsSection('schedule')"
+                                class="w-full flex justify-between items-center px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors duration-200">
+                                <span class="font-medium text-gray-900">Active Hours</span>
+                                <span id="icon-schedule"
+                                    class="material-symbols-outlined text-gray-500 transition-transform duration-200">expand_less</span>
+                            </button>
+                            <div id="section-schedule"
+                                class="p-4 border-t border-gray-200 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Start Time</label>
+                                    <input type="time" id="active-start" value="09:00"
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">End Time</label>
+                                    <input type="time" id="active-end" value="17:00"
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Global Save Button -->
+                    <div class="pt-6 mt-6 border-t border-gray-200">
+                        <button onclick="saveSettings()"
+                            class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200">
+                            Save All Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Review Page -->
+            <div id="review-page" class="page hidden">
+                <div class="bg-white shadow rounded-lg">
+                    <div class="px-4 py-5 sm:p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">Reply Review Queue</h3>
+                            <div class="flex space-x-2">
+                                <select id="filter-priority"
+                                    class="border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                                    <option value="all">All Replies</option>
+                                    <option value="high">High Priority</option>
+                                    <option value="medium">Medium Priority</option>
+                                    <option value="low">Low Priority</option>
+                                </select>
+                                <button onclick="bulkApprove()"
+                                    class="px-3 py-1 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+                                    Bulk Approve
+                                </button>
+                            </div>
+                        </div>
+                        <div id="review-queue" class="space-y-4">
+                            <!-- Reply cards will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Page -->
+            <div id="analytics-page" class="page hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Performance Chart -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Reply Performance</h3>
+                        <div id="performance-chart" class="h-64 flex items-end space-x-2">
+                            <!-- Chart bars will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Engagement Stats -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Engagement Statistics</h3>
+                        <div id="engagement-stats" class="space-y-2">
+                            <!-- Stats will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Hashtag Performance -->
+                    <div class="bg-white p-6 rounded-lg shadow lg:col-span-2">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Hashtag Performance</h3>
+                        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                            <table class="min-w-full divide-y divide-gray-300">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Hashtag</th>
+                                        <th
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Tweets Found</th>
+                                        <th
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Conversion Rate</th>
+                                        <th
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Avg Score</th>
+                                        <th
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="hashtag-performance">
+                                    <!-- Table rows will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Global Loading Indicator -->
+    <div id="global-loading"
+        class="hidden fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-4 flex items-center space-x-3">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+            <span class="text-sm font-medium text-gray-900">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Main Application Module -->
+    <script type="module" src="/static/js/app.js"></script>
+</body>
+
+</html>

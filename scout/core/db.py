@@ -43,6 +43,21 @@ class ScoutDB:
                     created_at TIMESTAMP
                 )
             ''')
+            
+            # Table for Engagements (Profile Watcher)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS engagements (
+                    comment_id TEXT PRIMARY KEY,
+                    post_id TEXT,
+                    subreddit TEXT,
+                    body_snippet TEXT,
+                    score INTEGER,
+                    reply_count INTEGER,
+                    posted_at TIMESTAMP,
+                    last_updated TIMESTAMP,
+                    has_handshake BOOLEAN DEFAULT 0
+                )
+            ''')
             conn.commit()
 
     def is_processed(self, post_id: str) -> bool:
@@ -93,3 +108,69 @@ class ScoutDB:
             else:
                 cursor.execute("UPDATE briefings SET status = ? WHERE post_id = ?", (status, post_id))
             conn.commit()
+
+    def get_stats(self) -> dict:
+        """Get aggregate statistics for the dashboard."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            stats = {
+                "pending": 0,
+                "approved": 0,
+                "discarded": 0,
+                "total_scanned": 0
+            }
+            
+            # Briefing stats
+            cursor.execute("SELECT status, COUNT(*) FROM briefings GROUP BY status")
+            for row in cursor.fetchall():
+                status, count = row
+                if status in stats:
+                    stats[status] = count
+                # Map 'posted' to 'approved' for simplicity if used internally
+                if status == 'posted':
+                     stats['approved'] += count # Accumulate if separate
+            
+            # Total processed
+            cursor.execute("SELECT COUNT(*) FROM processed_posts")
+            stats["total_scanned"] = cursor.fetchone()[0]
+            
+            return stats
+
+    def upsert_engagement(self, data: dict):
+        """Insert or Update engagement record."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR REPLACE INTO engagements 
+                (comment_id, post_id, subreddit, body_snippet, score, reply_count, posted_at, last_updated, has_handshake)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                data['id'], data['post_id'], data['subreddit'], data['body'], 
+                data['score'], data['replies'], data['created_utc'], 
+                datetime.now(), data['handshake']
+            ))
+            conn.commit()
+
+    def get_engagement_stats(self) -> dict:
+        """Get engagement metrics."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Aggregate stats
+            cursor.execute('''
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(score) as total_score,
+                    SUM(reply_count) as total_replies,
+                    SUM(has_handshake) as total_handshakes
+                FROM engagements
+            ''')
+            row = cursor.fetchone()
+            
+            return {
+                "active_conversations": row[0] or 0,
+                "net_karma": row[1] or 0,
+                "replies_received": row[2] or 0,
+                "handshakes": row[3] or 0
+            }

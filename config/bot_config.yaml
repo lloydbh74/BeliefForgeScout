@@ -1,0 +1,263 @@
+behavior:
+  human_patterns:
+    break_after_replies: 3
+    occasional_typo_correction: false
+    variable_online_times: true
+  randomization:
+    action_delay_ms:
+    - 1000
+    - 3000
+    enabled: true
+    session_variance: 0.15
+    typing_delay_ms:
+    - 800
+    - 2000
+commercial:
+  priority_keywords:
+    critical:
+    - imposter syndrome
+    - self-doubt
+    - feeling like a fraud
+    - identity crisis
+    high:
+    - brand identity
+    - positioning
+    - finding my why
+    - brand clarity
+    - who am I serving
+    medium:
+    - scaling challenges
+    - growth
+    - struggling
+    - overwhelmed
+    medium_high:
+    - plateau
+    - stuck
+    - no traction
+    - spinning wheels
+    - not seeing results
+  profile_indicators:
+    entrepreneur_keywords:
+    - founder
+    - CEO
+    - entrepreneur
+    - solopreneur
+    - indie hacker
+    - bootstrapped
+    target_stage:
+    - pre-revenue
+    - just launched
+    - MVP
+    - side project
+    - year 1
+    - year 2
+dashboard:
+  auto_refresh_seconds: 30
+  default_view: pending_approvals
+  features:
+    allow_manual_tweet_submission: false
+    show_analytics: true
+    show_error_log: true
+    show_learning_corpus: true
+deduplication:
+  engagement_limits:
+    max_replies_per_day: 20
+    max_replies_per_hour: 5
+    max_replies_per_session: 10
+  history_days: 7
+  same_author_cooldown_hours: 48
+filters:
+  account_quality:
+    min_account_age_days: 180
+    min_followers_ratio: 1.5
+    recent_tweet_ratio: 0.1
+  content_quality:
+    banned_keywords: []
+    banned_patterns: []
+    max_length: 280
+    reddit_max_length: 10000
+    min_length: 10
+  engagement:
+    max_followers: 100000
+    max_replies: 100
+    min_followers: 10
+    min_likes: 1
+    min_replies: 0
+  language:
+    allowed:
+    - en
+    blocked: []
+    required: en
+  recency:
+    max_age_hours: 13
+    min_age_hours: 0
+llm:
+  learning:
+    corpus_size: 5
+    enabled: true
+    min_engagement_rate: 0.05
+    rotation: true
+  model: anthropic/claude-3.5-sonnet
+  parameters:
+    max_tokens: 150
+    temperature: 0.7
+    top_p: 0.9
+  provider: openrouter
+  rate_limits:
+    daily_budget_usd: 50
+    requests_per_minute: 20
+monitoring:
+  retention:
+    logs_days: 30
+    scraped_data_days: 14  # Retention for raw scraped tweets
+    scraped_data_keep_queued_days: 90 # Keep useful data longer
+  logging:
+    categories:
+    - scraping
+    - filtering
+    - scoring
+    - llm_generation
+    - approval
+    - posting
+    - errors
+    format: json
+    level: INFO
+    retention_days: 30
+  telegram:
+    enabled: true
+    events:
+    - reply_ready_for_approval
+    - reply_posted_success
+    - error_critical
+    - daily_summary
+    - budget_warning
+platforms:
+  reddit:
+    enabled: true
+  twitter:
+    enabled: false
+safety:
+  content_moderation:
+    avoid_controversial_topics: true
+    never_argue_or_debate: true
+    respect_brand_values: true
+  respect:
+    honor_block_immediately: true
+    honor_mute_requests: true
+    never_spam: true
+  transparency:
+    bio_disclosure: Automated replies by Belief Forge
+    disclose_if_asked: false
+schedule:
+  active_hours:
+    end: '23:59'
+    start: 07:00
+  check_intervals:
+    approval_check_minutes: 5
+    scraping_minutes: 30
+  daylight_savings:
+    auto_adjust: true
+  timezone: Europe/London
+scoring:
+  thresholds:
+    auto_approve_score: 90
+    minimum_score: 65
+  weights:
+    discussion_opportunity: 0.1
+    engagement_velocity: 0.4
+    timing_score: 0.2
+    user_authority: 0.3
+targets:
+  hashtags:
+  - '#BuildInPublic'
+  - '#Bootstrapped'
+  - '#StartupLife'
+  - '#SoloFounder'
+  - '#EntrepreneurLife'
+  - '#FounderJourney'
+  - '#StartupProblems'
+  - '#FounderProblems'
+  - '#EntrepreneurProblems'
+  - '#BusinessHelp'
+  - '#SaaS'
+  - '#TechStartup'
+  - '#Bootstrapping'
+  - '#IndieHackers'
+  keywords:
+  - imposter syndrome
+  - self-doubt
+  - feeling like a fraud
+  - not good enough
+  - brand identity
+  - positioning
+  - finding my why
+  - who am I serving
+  - plateau
+  - stuck
+  - spinning wheels
+  - no traction
+  - struggling with
+  - feeling lost
+  - need help with
+  - business challenge
+  - entrepreneur problems
+  - starting a business
+  - marketing challenges
+  - sales problems
+  - leadership doubts
+  - burnout
+  - motivation
+  - confidence issues
+  - making progress
+  - getting unstuck
+  - feeling overwhelmed
+  - overwhelmed
+  - What are you working on
+  - What are you building
+  - Share your startup
+  - Pitch your startup
+  - What projects are you working on
+  - Working on something cool
+  lists:
+  - https://twitter.com/i/lists/your-list-id
+  subreddits:
+  - r/Entrepreneur
+  - r/Solopreneur
+  - r/Startups
+  - r/Startup_Ideas
+  - r/SoloFounders
+  - r/EntrepreneurRideAlong
+  - r/smallbusiness
+  - r/buildinpublic
+  - r/indiehackers
+  - r/MicroSaaS
+  - r/startupsavant
+  - r/TheFounders
+  - r/growmybusiness
+  - r/sideproject
+  - r/startupshelpstartups
+  - r/productivity
+voice:
+  character_limits:
+    absolute_max: 280
+    preferred_max: 100
+    reddit_max: 5000
+    reddit_preferred_max: 1000
+  language: British English
+  required_patterns:
+  - British spellings (realise, colour, whilst, amongst)
+  - Gentle qualifiers (quite, rather, perhaps)
+  - Conversational contractions (you're, I'm, it's)
+  strict_avoidance:
+  - Exclamation marks (!)
+  - Hyphenation instead of commas
+  - Corporate jargon (synergy, leverage, disrupt, game-changer, crushing it)
+  - American spellings (-ize, -or endings, while, among)
+  - Emoji
+  - Hashtags in replies
+  - Links (unless specifically relevant and requested)
+  tone: warm, authentic friend - never salesy
+  validation:
+    enabled: true
+    max_violations: 0
+    strict_mode: true

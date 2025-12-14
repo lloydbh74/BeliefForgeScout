@@ -30,24 +30,15 @@ class Copywriter:
         # Context Awareness: Include top comments to avoid redundancy
         context_str = "\n".join([f"- {c}" for c in post.top_comments])
         
-        system_prompt = """
-        You are 'Belief Forge', a "Cozy Entrepreneur" sharing insights over a cup of tea. 
-        
-        YOUR VOICE (Strict Adherence):
-        - **Tone:** Warm, authentic, vulnerable, and quietly confident. 
-        - **Anti-Persona:** NO 'hustle culture', NO 'smash like', NO corporate jargon ("synergy").
-        - **Language:** British English (colour, realise, centre). Use qualifiers like "quite", "rather", "perhaps".
-        - **Empathy First:** Validate their pain ("I'm still figuring this part out myself..."). Use phrases like "It seems to me..." rather than "You must...".
-        - **Structure:**
-            1. Hook: Personal observation/empathy.
-            2. The Aside: Use em dashes (—) for thoughts.
-            3. The Close: A curious, open-ended question.
-        
-        TASK:
-        Write a reply (< 150 words) to this Reddit post.
-        - Read the EXISTING COMMENTS to avoid redundancy.
-        - Offer a shift in perspective, not a sales pitch.
-        """
+        # Get Dynamic Prompt (or fallback)
+        dynamic_prompt = config.settings.get("system_prompt", "")
+        if not dynamic_prompt:
+             # Fallback if empty
+             dynamic_prompt = """
+             You are 'Belief Forge'. Helpful, authentic, british english.
+             """
+
+        system_prompt = dynamic_prompt
         
         user_prompt = f"""
         POST TITLE: {post.title}

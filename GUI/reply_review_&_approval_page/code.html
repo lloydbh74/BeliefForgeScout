@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Twitter Engagement Bot Review</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#7344c5",
+            "background-light": "#f7f6f8",
+            "background-dark": "#18141e",
+          },
+          fontFamily: {
+            "display": ["Inter", "sans-serif"]
+          },
+          borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings:
+      'FILL' 0,
+      'wght' 400,
+      'GRAD' 0,
+      'opsz' 24
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-white">
+<div class="relative flex h-auto min-h-screen w-full flex-col">
+<!-- Top App Bar -->
+<header class="sticky top-0 z-10 flex flex-col bg-background-dark/80 backdrop-blur-sm">
+<div class="flex items-center p-4 pb-2 justify-between">
+<div class="flex size-12 shrink-0 items-center justify-start">
+<span class="material-symbols-outlined text-white" style="font-size: 28px;">menu</span>
+</div>
+<h1 class="text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">Review Queue</h1>
+<div class="flex w-12 items-center justify-end">
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded h-12 bg-transparent text-white gap-2 text-base font-bold leading-normal tracking-[0.015em] min-w-0 p-0">
+<span class="material-symbols-outlined text-white" style="font-size: 28px;">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Chips / Filters -->
+<div class="flex gap-2 p-3 pt-0 overflow-x-auto whitespace-nowrap">
+<div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-primary pl-4 pr-4"><p class="text-white text-sm font-medium leading-normal">All</p></div>
+<div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#2f2b36] pl-4 pr-4">
+<p class="text-white text-sm font-medium leading-normal">High Priority</p>
+</div>
+<div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#2f2b36] pl-4 pr-4">
+<p class="text-white text-sm font-medium leading-normal">Needs Review</p>
+</div>
+<div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#2f2b36] pl-4 pr-4"><p class="text-white text-sm font-medium leading-normal">Edited</p></div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 p-2">
+<!-- Review Card 1 -->
+<div class="flex flex-col gap-4 bg-[#1f1b26] rounded-xl p-4 mb-4">
+<!-- Original Tweet Card -->
+<div class="@container">
+<div class="flex flex-col items-stretch justify-start rounded-lg @xl:flex-row @xl:items-start">
+<div class="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-lg" data-alt="Abstract gradient placeholder image" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAi8EMUgRqleWnoicE3z0oc27D-4lfebUSaV8dEPhN9LIMzEmpqED7B7M1yK_hjoqCKjjRt_qclTlKFaM5MdTLIQdwhz_n2mHzFWzhoAO1p3gun9bwDIjf1PWIePgCYWfcL665k4gFtOeCEfGq2dDuatS6aBJOLfws_8dMplu25O_i-GpN0Xhd3zryKCV1AM2VUO3ktqUqVuxET-6QfwyyF9SUnNns0dEBhlaJCr8RwBY0OuEmFBuDykWp6dBuf8TGJ5FomdUSEz_gl");'></div>
+<div class="flex w-full min-w-72 grow flex-col items-stretch justify-center gap-1 py-4 @xl:px-4">
+<p class="text-[#a8a2b4] text-sm font-normal leading-normal">Original Tweet</p>
+<p class="text-white text-lg font-bold leading-tight tracking-[-0.015em]">TechInnovator @techguru</p>
+<div class="flex items-end gap-3 justify-between">
+<div class="flex flex-col gap-1">
+<p class="text-[#a8a2b4] text-base font-normal leading-normal">
+                    Just released a new feature using AI! What are your thoughts on ethical AI development? #AI #Tech
+                  </p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Generated Reply -->
+<div>
+<p class="text-white text-base font-normal leading-normal pb-3 pt-1">
+            Great question! We believe ethical AI is paramount. It's about transparency, fairness, and accountability. Our latest blog post dives deep into our framework for this.
+          </p>
+</div>
+<!-- Score & Breakdown -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<p class="text-[#a8a2b4] text-sm font-medium leading-normal">Score Breakdown</p>
+<div class="flex items-center gap-2 rounded-full bg-green-500/20 px-3 py-1">
+<span class="material-symbols-outlined text-green-400" style="font-size: 16px;">task_alt</span>
+<p class="text-green-400 text-sm font-bold">92/100</p>
+</div>
+</div>
+<div class="grid grid-cols-[auto_1fr] gap-x-6">
+<div class="col-span-2 grid grid-cols-subgrid border-t border-t-[#45404f] py-3">
+<p class="text-[#a8a2b4] text-sm font-normal leading-normal">Commercial</p>
+<p class="text-white text-sm font-normal leading-normal text-right">x2</p>
+</div>
+<div class="col-span-2 grid grid-cols-subgrid border-t border-t-[#45404f] py-3">
+<p class="text-[#a8a2b4] text-sm font-normal leading-normal">Authority</p>
+<p class="text-white text-sm font-normal leading-normal text-right">x1.5</p>
+</div>
+<div class="col-span-2 grid grid-cols-subgrid border-t border-t-[#45404f] py-3">
+<p class="text-[#a8a2b4] text-sm font-normal leading-normal">Tone</p>
+<p class="text-white text-sm font-normal leading-normal text-right">x1</p>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
+<button class="flex h-10 w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-[#2f2b36] text-white text-sm font-medium leading-normal">Skip</button>
+<button class="flex h-10 w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-[#2f2b36] text-white text-sm font-medium leading-normal">Reject</button>
+<button class="flex h-10 w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-[#2f2b36] text-white text-sm font-medium leading-normal">Edit</button>
+<button class="flex h-10 w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-primary text-white text-sm font-medium leading-normal">Approve</button>
+</div>
+</div>
+<!-- Review Card 2 -->
+<div class="flex flex-col gap-4 bg-[#1f1b26] rounded-xl p-4 mb-4">
+<!-- Original Tweet Card -->
+<div class="@container">
+<div class="flex flex-col items-stretch justify-start rounded-lg @xl:flex-row @xl:items-start">
+<div class="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-lg" data-alt="Abstract gradient placeholder image" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDrRSogo-Sz_Drum9uDdI3zaUsUx4Jf6OZwOhow3xwyHlytbUqN7Di8yFp54cMgGCHMzOIuPfO-n2btIZgEwpZBcIjpBXTlaEWAQqCvWhOUQVr-rVtjeWkPwTSctSL0cgWRRzLIRzt5wNDc0z3CHiLno06CC5tP_8gwq8u1Cg1QGGgaq14M-3IWCBskpKjw3FxCIINifFRLDBANe42XGByo7aNLLR6Oz6FHmv406fm2I6bdWz0elqdFWZbisJQTbYugUi5zpx3O1D91");'></div>
+<div class="flex w-full min-w-72 grow flex-col items-stretch justify-center gap-1 py-4 @xl:px-4">
+<p class="text-[#a8a2b4] text-sm font-normal leading-normal">Original Tweet</p>
+<p class="text-white text-lg font-bold leading-tight tracking-[-0.015em]">DesignDaily @ddesigns</p>
+<div class="flex items-end gap-3 justify-between">
+<div class="flex flex-col gap-1">
+<p class="text-[#a8a2b4] text-base font-normal leading-normal">
+                    Feeling uninspired today. How do you all break through creative blocks? Looking for tips! #design #creativity
+                  </p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Generated Reply -->
+<div>
+<p class="text-white text-base font-normal leading-normal pb-3 pt-1">
+            We've all been there! Sometimes a walk helps. Or looking at work from completely different fields. We find inspiration in architecture a lot. Keep pushing!
+          </p>
+</div>
+<!-- Score & Breakdown -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<p class="text-[#a8a2b4] text-sm font-medium leading-normal">Score Breakdown</p>
+<div class="flex items-center gap-2 rounded-full bg-amber-500/20 px-3 py-1">
+<span class="material-symbols-outlined text-amber-400" style="font-size: 16px;">error</span>
+<p class="text-amber-400 text-sm font-bold">78/100</p>
+</div>
+</div>
+<div class="grid grid-cols-[auto_1fr] gap-x-6">
+<div class="col-span-2 grid grid-cols-subgrid border-t border-t-[#45404f] py-3">
+<p class="text-[#a8a2b4] text-sm font-normal leading-normal">Brand Voice</p>
+<p class="text-white text-sm font-normal leading-normal text-right">x0.8</p>
+</div>
+<div class="col-span-2 grid grid-cols-subgrid border-t border-t-[#45404f] py-3">
+<p class="text-[#a8a2b4] text-sm font-normal leading-normal">Engagement</p>
+<p class="text-white text-sm font-normal leading-normal text-right">x1.2</p>
+</div>
+<div class="col-span-2 grid grid-cols-subgrid border-t border-t-[#45404f] py-3">
+<p class="text-[#a8a2b4] text-sm font-normal leading-normal">Tone</p>
+<p class="text-white text-sm font-normal leading-normal text-right">x1</p>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
+<button class="flex h-10 w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-[#2f2b36] text-white text-sm font-medium leading-normal">Skip</button>
+<button class="flex h-10 w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-red-500/80 text-white text-sm font-medium leading-normal">Reject</button>
+<button class="flex h-10 w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-blue-500/80 text-white text-sm font-medium leading-normal">Edit</button>
+<button class="flex h-10 w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-primary text-white text-sm font-medium leading-normal">Approve</button>
+</div>
+</div>
+</main>
+</div>
+</body></html>

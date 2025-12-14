@@ -40,8 +40,9 @@ class ScoutEngine:
         report("🚀 Starting Scout Mission...", 0.0)
         
         # 1. DISCOVERY
-        # Define targets (TODO: Load from config/db)
-        known_subs = ["python", "learnprogramming", "entrepreneur"] # Added entrepreneur for more hits
+        # Define targets (Load from dynamic config)
+        known_subs = config.settings.get("target_subreddits", ["entrepreneur", "python"])
+        keywords = config.settings.get("pathfinder_keywords", [])
         
         report(f"🔭 Scanning Watchtower targets: {known_subs}...", 0.1)
         
@@ -49,8 +50,16 @@ class ScoutEngine:
         try:
             # Track A: Watchtower
             raw_posts.extend(self.reddit.scan_watchtower(known_subs, limit=10))
+            
+            # Track B: Pathfinder (if configured)
+            if keywords:
+                report(f"🧭 Pathfinder searching wilds for: {keywords}...", 0.2)
+                wild_posts = self.reddit.scan_pathfinder(keywords, limit=10)
+                raw_posts.extend(wild_posts)
+                report(f"   > Found {len(wild_posts)} wild targets.", 0.25)
+                
         except Exception as e:
-            report(f"❌ Watchtower Error: {e}", 0.15)
+            report(f"❌ Discovery Error: {e}", 0.15)
         
         # Filter out already processed
         new_posts = [p for p in raw_posts if not self.db.is_processed(p.id)]
@@ -97,10 +106,36 @@ class ScoutEngine:
             
             if draft.status != 'error':
                 self.db.save_briefing(post, draft, analysis.intent)
-            else:
                 logger.error(f"Failed to draft for {post.id}")
                 
+        # Notification
+        if relevant_posts:
+            from scout.core.notifier import Notifier
+            notifier = Notifier()
+            notifier.notify_mission_report(len(relevant_posts))
+            report("🔔 Notification sent.", 0.95)
+
         report("🏁 Mission Complete. Briefings active.", 1.0)
+        
+    def run_profile_watcher(self):
+        """
+        Execute the Profile Watcher mission (Engagement Tracking).
+        """
+        logger.info("🔭 Starting Profile Watcher...")
+        
+        # 1. Scan History
+        engagements = self.reddit.scan_my_history(limit=25)
+        logger.info(f"   > Found {len(engagements)} recent comments.")
+        
+        # 2. Update DB
+        new_handshakes = 0
+        for eng in engagements:
+            self.db.upsert_engagement(eng)
+            if eng['handshake']:
+                new_handshakes += 1
+                
+        logger.info(f"🏁 Profile Watcher Complete. {new_handshakes} handshakes active.")
+        return len(engagements), new_handshakes
 
 if __name__ == "__main__":
     engine = ScoutEngine()

@@ -1,4 +1,5 @@
 import os
+import json
 from dataclasses import dataclass
 from typing import List, Optional
 from dotenv import load_dotenv
@@ -55,6 +56,49 @@ class ScoutConfig:
             db_path=os.getenv("SCOUT_DB_PATH", "scout.db"),
             schedule_hours=hours
         )
+        
+        # Load Dynamic Settings
+        self.settings_path = os.path.join(os.path.dirname(__file__), "settings.json")
+        self.settings = self._load_settings()
+
+    def _load_settings(self) -> dict:
+        """Load dynamic settings from JSON, with defaults."""
+        defaults = {
+            "system_prompt": "You are a helpful assistant.",
+            "target_subreddits": ["entrepreneur", "python"],
+            "pathfinder_keywords": ["burnout", "feeling like a fraud", "want to quit", "business failure"],
+            "scheduler_enabled": False,
+            "telegram_token": "",
+            "telegram_chat_id": "",
+            "reddit_username": ""
+        }
+        if os.path.exists(self.settings_path):
+            try:
+                with open(self.settings_path, 'r') as f:
+                    loaded = json.load(f)
+                    defaults.update(loaded)
+            except Exception as e:
+                print(f"Error loading settings.json: {e}")
+        
+        # Fallback: If Telegram keys are empty in JSON/Defaults, check ENV
+        if not defaults.get("telegram_token"):
+            defaults["telegram_token"] = os.getenv("TELEGRAM_BOT_TOKEN", "")
+        if not defaults.get("telegram_chat_id"):
+            defaults["telegram_chat_id"] = os.getenv("TELEGRAM_CHAT_ID", "")
+        # Fallback: Reddit Username
+        if not defaults.get("reddit_username"):
+            defaults["reddit_username"] = os.getenv("REDDIT_USERNAME", "")
+
+        return defaults
+
+    def save_settings(self, new_settings: dict):
+        """Save settings to JSON file."""
+        self.settings.update(new_settings)
+        try:
+            with open(self.settings_path, 'w') as f:
+                json.dump(self.settings, f, indent=4)
+        except Exception as e:
+            print(f"Error saving settings.json: {e}")
 
     def validate(self) -> List[str]:
         """Returns a list of missing configuration errors."""
