@@ -41,8 +41,6 @@ ENV/
 .env
 .env.local
 .env.*.local
-scout/settings.json
-settings.json
 
 # Data directories (contains sensitive data)
 data/logs/*.log
