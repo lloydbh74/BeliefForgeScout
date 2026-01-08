@@ -9,4 +9,5 @@ watchdog>=4.0.0
 python-telegram-bot>=21.0.0
 st-copy-to-clipboard
 streamlit-autorefresh
+streamlit-authenticator==0.3.2
 st-clipboard
