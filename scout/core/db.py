@@ -104,10 +104,27 @@ class ScoutDB:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             if content:
-                cursor.execute("UPDATE briefings SET status = ?, draft_content = ? WHERE post_id = ?", (status, content, post_id))
+                cursor.execute(
+                    "UPDATE briefings SET status = ?, draft_content = ? WHERE post_id = ?", 
+                    (status, content, post_id)
+                )
             else:
-                cursor.execute("UPDATE briefings SET status = ? WHERE post_id = ?", (status, post_id))
+                cursor.execute(
+                    "UPDATE briefings SET status = ? WHERE post_id = ?", 
+                    (status, post_id)
+                )
             conn.commit()
+
+    def get_recent_engagements(self, limit: int = 50) -> List[dict]:
+        """Fetch recent engagements for the dashboard."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM engagements ORDER BY posted_at DESC LIMIT ?", 
+                (limit,)
+            )
+            return [dict(row) for row in cursor.fetchall()]
 
     def get_stats(self) -> dict:
         """Get aggregate statistics for the dashboard."""
