@@ -1,25 +1,40 @@
 #!/bin/bash
 
-# Define the service name from docker-compose.yml
 SERVICE_NAME="scout-app"
 
 echo "🛡️  Deploying Scout..."
 
-# 1. Pull the latest changes from git
+# 1. Pull latest code
 echo "⬇️  Pulling latest code..."
 git pull origin master
 
-# 2. Build the new image (in case requirements changed)
-echo "🏗️  Building Docker image..."
-docker-compose build $SERVICE_NAME
+# Validate compose file
+if [ ! -f "docker-compose.yml" ]; then
+  echo "❌ docker-compose.yml missing. Create it first."
+  exit 1
+fi
 
-# 3. Restart ONLY the Scout service
-# This ensures other containers on the server are untouched
-echo "🔄 Restarting Service: $SERVICE_NAME..."
-docker-compose up -d --no-deps $SERVICE_NAME
+# 2. Build with --pull to refresh base images (e.g., node:20-alpine)
+echo "🏗️  Building image (pulling base images)..."
+docker-compose build --pull $SERVICE_NAME
 
-# 4. Optional: Prune old images to save space
-echo "🧹 Pruning old images..."
+# 3. Restart service
+echo "🔄 Restarting $SERVICE_NAME..."
+# Manual cleanup to bypass bug in old docker-compose versions
+docker stop scout_app || true
+docker rm scout_app || true
+docker-compose up -d --remove-orphans $SERVICE_NAME
+
+# 4. Health check
+sleep 10
+if docker-compose ps $SERVICE_NAME | grep -q "Up"; then
+  echo "✅ $SERVICE_NAME healthy."
+else
+  echo "⚠️  Check logs: docker-compose logs $SERVICE_NAME"
+fi
+
+# 5. Cleanup
+echo "🧹 Pruning..."
 docker image prune -f
 
-echo "✅ Scout Deployed Successfully!"
+echo "✅ Deploy complete!"
