@@ -15,3 +15,10 @@ services:
       - SCOUT_DB_PATH=/app/data/scout.db
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
+    networks:
+      - default
+      - web
+
+networks:
+  web:
+    external: true
