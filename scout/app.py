@@ -56,7 +56,7 @@ else:
         cookie_expiry_days=30
     )
 
-    name, authentication_status, username = authenticator.login("Login", "main")
+    name, authentication_status, username = authenticator.login(location="main")
 
     if st.session_state["authentication_status"] == False:
         st.error("Username/password is incorrect")
