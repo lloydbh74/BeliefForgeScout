@@ -19,11 +19,10 @@ echo "🏗️  Building image (pulling base images)..."
 docker-compose build --pull $SERVICE_NAME
 
 # 3. Restart service
-echo "🔄 Restarting $SERVICE_NAME..."
-# Manual cleanup to bypass bug in old docker-compose versions
-docker stop scout_app || true
-docker rm scout_app || true
-docker-compose up -d --remove-orphans $SERVICE_NAME
+echo "🔄 Restarting $SERVICE_NAME (aggressive cleanup)..."
+# Manual cleanup by label to find all "scout" containers, even orphaned ones
+docker rm -f $(docker ps -a -q --filter label=com.docker.compose.project=scout) || true
+docker-compose up -d $SERVICE_NAME
 
 # 4. Health check
 sleep 10
