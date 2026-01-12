@@ -29,6 +29,37 @@ if 'db' not in st.session_state:
 if 'engine' not in st.session_state:
     st.session_state.engine = ScoutEngine()
 
+# --- GLOBAL INITIALIZATION (Background Persistence) ---
+@st.cache_resource
+def get_system_manager():
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from scout.core.system import SystemManager
+    
+    scheduler = BackgroundScheduler()
+    scheduler.start()
+    return SystemManager(scheduler)
+
+system_manager = get_system_manager()
+
+def scheduled_job():
+    """Wrapper to run mission in background."""
+    print("⏰ Scheduled Mission Triggered")
+    eng = ScoutEngine()
+    eng.run_mission()
+
+# Start/Stop Job based on config (Global App Level)
+from apscheduler.triggers.cron import CronTrigger
+sched_enabled = config.settings.get("scheduler_enabled", False)
+job_id = "scout_mission_cron"
+trigger = CronTrigger(hour='7,14,21', minute='0')
+
+system_manager.sync_scheduler(
+    enabled=sched_enabled,
+    job_id=job_id,
+    job_func=scheduled_job,
+    trigger=trigger
+)
+
 # --- AUTHENTICATION ---
 # We use simple env vars for a single-user setup
 admin_username = "admin"
@@ -64,17 +95,6 @@ else:
         st.warning("Please enter your username and password")
 
 if st.session_state.get("authentication_status"):
-
-    # Initialize Scheduler
-    from apscheduler.schedulers.background import BackgroundScheduler
-    from apscheduler.triggers.cron import CronTrigger
-    
-    if 'scheduler' not in st.session_state:
-        st.session_state.scheduler = BackgroundScheduler()
-        st.session_state.scheduler.start()
-    
-    if 'system' not in st.session_state:
-        st.session_state.system = SystemManager(st.session_state.scheduler)
     
     # --- URL OPENER & CLIPBOARD LOGIC ---
     if 'open_url_next' in st.session_state:
@@ -104,24 +124,6 @@ if st.session_state.get("authentication_status"):
         if 'copy_text_next' in st.session_state:
             del st.session_state['copy_text_next']
     # ------------------------
-    
-    def scheduled_job():
-        """Wrapper to run mission in background."""
-        print("⏰ Scheduled Mission Triggered")
-        eng = ScoutEngine()
-        eng.run_mission()
-    
-    # Start/Stop Job based on config
-    sched_enabled = config.settings.get("scheduler_enabled", False)
-    job_id = "scout_mission_cron"
-    trigger = CronTrigger(hour='7,14,21', minute='0')
-    
-    st.session_state.system.sync_scheduler(
-        enabled=sched_enabled,
-        job_id=job_id,
-        job_func=scheduled_job,
-        trigger=trigger
-    )
     
     
     # Custom CSS
@@ -167,8 +169,12 @@ if st.session_state.get("authentication_status"):
     
         # Scheduler Status
         if sched_enabled:
-            next_run = st.session_state.scheduler.get_job(job_id).next_run_time
-            st.caption(f"✅ Auto-Scout: Active\nNext: {next_run.strftime('%H:%M')}")
+            job = system_manager.scheduler.get_job(job_id)
+            if job:
+                next_run = job.next_run_time
+                st.caption(f"✅ Auto-Scout: Active\nNext: {next_run.strftime('%H:%M')}")
+            else:
+                 st.caption("✅ Auto-Scout: Active (Queueing...)")
         else:
             st.caption("⏸️ Auto-Scout: Paused")
     
@@ -354,7 +360,7 @@ if st.session_state.get("authentication_status"):
                 }
                 
                 # Persist via SystemManager
-                success = st.session_state.system.save_settings(settings_to_save, api_keys)
+                success = system_manager.save_settings(settings_to_save, api_keys)
                 
                 if success:
                     st.success("Settings saved to disk! Keys & Config will persist.")
