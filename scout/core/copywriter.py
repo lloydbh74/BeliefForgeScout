@@ -77,3 +77,75 @@ class Copywriter:
                 strategy_used="error", 
                 status="error"
             )
+    
+    def generate_reply_draft(self, comment_data: dict, context: List[dict] = None) -> DraftReply:
+        """
+        Generate a reply to an existing comment with thread context.
+        
+        Args:
+            comment_data: Dictionary with comment info (from fetch_comment_by_id)
+            context: Optional list of ancestor comments for thread context
+            
+        Returns:
+            DraftReply object
+        """
+        logger.info(f"Generating reply to comment {comment_data['id']}...")
+        
+        # Build context string
+        context_str = ""
+        if context:
+            context_str = "\n\nTHREAD CONTEXT (earlier comments):\n"
+            for i, ctx in enumerate(context, 1):
+                context_str += f"{i}. @{ctx['author']}: {ctx['body']}\n"
+        
+        # Get dynamic prompt
+        dynamic_prompt = config.settings.get("system_prompt", "")
+        if not dynamic_prompt:
+            dynamic_prompt = """
+            You are 'Belief Forge'. Helpful, authentic, british english.
+            """
+        
+        system_prompt = dynamic_prompt
+        
+        user_prompt = f"""
+        ORIGINAL POST: {comment_data['post_title']}
+        POST CONTENT: {comment_data['post_content']}
+        {context_str}
+        
+        YOU ARE REPLYING TO:
+        @{comment_data['author']} said: {comment_data['body']}
+        
+        Draft a thoughtful reply that:
+        1. Directly addresses @{comment_data['author']}'s comment
+        2. Stays relevant to the original post context
+        3. Adds value to the conversation
+        
+        Your reply:
+        """
+        
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ]
+            )
+            
+            content = response.choices[0].message.content.strip()
+            
+            return DraftReply(
+                post_id=comment_data['post_id'],
+                content=content,
+                strategy_used=f"Reply to @{comment_data['author']}",
+                status="pending"
+            )
+        
+        except Exception as e:
+            logger.error(f"Reply generation failed for {comment_data['id']}: {e}")
+            return DraftReply(
+                post_id=comment_data['post_id'],
+                content="Error generating reply.",
+                strategy_used="error",
+                status="error"
+            )

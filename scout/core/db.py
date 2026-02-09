@@ -40,7 +40,10 @@ class ScoutDB:
                     draft_content TEXT,
                     intent TEXT,
                     status TEXT, -- pending, approved, posted, discarded
-                    created_at TIMESTAMP
+                    created_at TIMESTAMP,
+                    source TEXT DEFAULT 'auto', -- 'auto' or 'manual'
+                    parent_comment_id TEXT,
+                    parent_author TEXT
                 )
             ''')
             
@@ -78,18 +81,45 @@ class ScoutDB:
             conn.commit()
 
     def save_briefing(self, post: ScoutPost, draft: DraftReply, intent: str):
-        """Save a generated draft as a briefing."""
+        """Save a generated draft as a briefing (automated workflow)."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute('''
                 INSERT OR REPLACE INTO briefings 
-                (post_id, subreddit, title, post_content, post_url, draft_content, intent, status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (post_id, subreddit, title, post_content, post_url, draft_content, intent, status, created_at, source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 post.id, post.subreddit, post.title, post.content, post.url, 
-                draft.content, intent, 'pending', datetime.now()
+                draft.content, intent, 'pending', datetime.now(), 'auto'
             ))
             conn.commit()
+    
+    def save_manual_briefing(self, post_id: str, subreddit: str, title: str, 
+                            post_content: str, post_url: str, draft_content: str,
+                            parent_comment_id: Optional[str] = None, 
+                            parent_author: Optional[str] = None):
+        """Save a manually generated draft from URL input."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR REPLACE INTO briefings 
+                (post_id, subreddit, title, post_content, post_url, draft_content, 
+                 intent, status, created_at, source, parent_comment_id, parent_author)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                post_id, subreddit, title, post_content, post_url, draft_content,
+                'Manual', 'pending', datetime.now(), 'manual', parent_comment_id, parent_author
+            ))
+            conn.commit()
+    
+    def check_duplicate_briefing(self, post_id: str) -> Optional[dict]:
+        """Check if a briefing already exists for this post/comment."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM briefings WHERE post_id = ?", (post_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
             
     def get_pending_briefings(self) -> List[dict]:
         """Get all briefings waiting for review."""

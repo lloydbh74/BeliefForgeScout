@@ -189,3 +189,107 @@ class RedditScout:
             logger.error(f"Profile scan failed: {e}")
             
         return engagements
+    
+    def fetch_post_by_id(self, post_id: str, subreddit: str = None) -> ScoutPost:
+        """
+        Fetch a specific post by ID for manual URL input.
+        
+        Args:
+            post_id: Reddit post ID (e.g., 'abc123')
+            subreddit: Optional subreddit name for faster lookup
+            
+        Returns:
+            ScoutPost object
+            
+        Raises:
+            Exception if post not found or deleted
+        """
+        try:
+            # Use submission() method which works with just the ID
+            submission = self.reddit.submission(id=post_id)
+            
+            # Force load to check if exists
+            _ = submission.title
+            
+            return self._to_scout_post(submission)
+            
+        except Exception as e:
+            logger.error(f"Failed to fetch post {post_id}: {e}")
+            raise Exception(f"Post not found or has been deleted")
+    
+    def fetch_comment_by_id(self, comment_id: str, post_id: str) -> dict:
+        """
+        Fetch a specific comment and its context.
+        
+        Args:
+            comment_id: Reddit comment ID
+            post_id: Parent post ID
+            
+        Returns:
+            Dictionary with comment data and parent post info
+            
+        Raises:
+            Exception if comment not found or deleted
+        """
+        try:
+            comment = self.reddit.comment(id=comment_id)
+            
+            # Force load to check if exists
+            _ = comment.body
+            
+            # Get parent submission for context
+            submission = comment.submission
+            
+            return {
+                'id': comment.id,
+                'body': comment.body,
+                'author': str(comment.author) if comment.author else '[deleted]',
+                'created_utc': comment.created_utc,
+                'score': comment.score,
+                'post_id': submission.id,
+                'post_title': submission.title,
+                'post_content': submission.selftext,
+                'subreddit': submission.subreddit.display_name,
+                'permalink': comment.permalink
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to fetch comment {comment_id}: {e}")
+            raise Exception(f"Comment not found or has been deleted")
+    
+    def get_comment_context(self, comment_id: str, depth: int = 3) -> list:
+        """
+        Get ancestor comments for reply context.
+        
+        Args:
+            comment_id: Comment ID to get context for
+            depth: How many ancestor comments to fetch (default 3)
+            
+        Returns:
+            List of parent comments (oldest to newest)
+        """
+        try:
+            comment = self.reddit.comment(id=comment_id)
+            context = []
+            
+            current = comment
+            for _ in range(depth):
+                # Check if there's a parent comment (not the submission)
+                if hasattr(current, 'parent_id') and current.parent_id.startswith('t1_'):
+                    parent_id = current.parent_id[3:]  # Remove 't1_' prefix
+                    parent = self.reddit.comment(id=parent_id)
+                    
+                    context.insert(0, {  # Insert at beginning for chronological order
+                        'author': str(parent.author) if parent.author else '[deleted]',
+                        'body': parent.body[:300]  # Limit length
+                    })
+                    
+                    current = parent
+                else:
+                    break  # Reached top-level comment
+            
+            return context
+            
+        except Exception as e:
+            logger.warning(f"Could not fetch full context for {comment_id}: {e}")
+            return []

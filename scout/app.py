@@ -158,7 +158,7 @@ if st.session_state.get("authentication_status"):
         st.title("🛡️ The Scout")
         
         # Navigation
-        page = st.radio("Go to", ["Briefings", "Settings", "Engagements"])
+        page = st.radio("Go to", ["Briefings", "Quick Draft", "Engagements", "Settings"])
         
         st.markdown("---")
         
@@ -268,6 +268,181 @@ if st.session_state.get("authentication_status"):
                      st.info("No engagement data found yet. Run a scan!")
             except Exception as e:
                 st.error(f"Error loading log: {e}")
+    
+    elif page == "Quick Draft":
+        st.title("🎯 Quick Draft")
+        st.markdown("Generate a comment or reply from any Reddit URL")
+        
+        # Import required modules
+        from scout.core.url_parser import RedditURLParser
+        from scout.core.reddit_client import RedditScout
+        from scout.core.copywriter import Copywriter
+        
+        # Initialize components
+        if 'reddit_scout' not in st.session_state:
+            st.session_state.reddit_scout = RedditScout()
+        if 'copywriter' not in st.session_state:
+            st.session_state.copywriter = Copywriter()
+        
+        # URL Input
+        st.subheader("📎 Paste Reddit URL")
+        url_input = st.text_input(
+            "Post or Comment URL",
+            placeholder="https://reddit.com/r/entrepreneur/comments/abc123/...",
+            help="Paste a link to a Reddit post (to comment) or comment (to reply)"
+        )
+        
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            generate_btn = st.button("🚀 Generate Draft", type="primary", disabled=not url_input)
+        
+        # Processing
+        if generate_btn and url_input:
+            # Validate URL
+            if not RedditURLParser.validate_url(url_input):
+                st.error(RedditURLParser.get_error_message(url_input))
+            else:
+                # Parse URL
+                parsed = RedditURLParser.parse_reddit_url(url_input)
+                
+                if not parsed:
+                    st.error("Unable to parse Reddit URL. Please check the format.")
+                else:
+                    url_type = parsed['type']
+                    post_id = parsed['post_id']
+                    
+                    # Check for duplicates
+                    duplicate = st.session_state.db.check_duplicate_briefing(post_id)
+                    if duplicate:
+                        st.warning(f"⚠️ This URL is already in your briefings (Status: {duplicate['status']})")
+                        if not st.button("Generate Anyway"):
+                            st.stop()
+                    
+                    try:
+                        with st.spinner("Fetching content from Reddit..."):
+                            if url_type == 'post':
+                                # Fetch post
+                                post = st.session_state.reddit_scout.fetch_post_by_id(post_id)
+                                
+                                # Display preview
+                                st.markdown("---")
+                                st.subheader("📌 Post Preview")
+                                
+                                badge_html = f'<span style="background-color:#0d47a1; color:white; padding:4px 12px; border-radius:15px; font-size:0.85em; font-weight:bold;">💬 COMMENT</span>'
+                                st.markdown(badge_html, unsafe_allow_html=True)
+                                
+                                st.markdown(f"**{post.title}**")
+                                st.caption(f"👤 u/{post.author} • r/{post.subreddit}")
+                                
+                                with st.expander("View Post Content", expanded=True):
+                                    st.write(post.content[:500] + ("..." if len(post.content) > 500 else ""))
+                                
+                                # Generate draft
+                                with st.spinner("Generating comment draft..."):
+                                    draft = st.session_state.copywriter.generate_draft(post, "Manual")
+                                
+                                if draft.status == "error":
+                                    st.error("Failed to generate draft. Please check your API settings.")
+                                else:
+                                    st.markdown("---")
+                                    st.subheader("✍️ Generated Draft")
+                                    
+                                    draft_text = st.text_area(
+                                        "Edit your comment",
+                                        value=draft.content,
+                                        height=200,
+                                        key="manual_draft"
+                                    )
+                                    
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        if st.button("💾 Save to Briefings", type="primary"):
+                                            st.session_state.db.save_manual_briefing(
+                                                post_id=post.id,
+                                                subreddit=post.subreddit,
+                                                title=post.title,
+                                                post_content=post.content,
+                                                post_url=post.url,
+                                                draft_content=draft_text
+                                            )
+                                            st.success("✅ Saved to Briefings!")
+                                            time.sleep(1)
+                                            st.rerun()
+                                    
+                                    with col2:
+                                        if st.button("🗑️ Discard"):
+                                            st.rerun()
+                            
+                            else:  # comment
+                                comment_id = parsed['comment_id']
+                                
+                                # Fetch comment
+                                comment_data = st.session_state.reddit_scout.fetch_comment_by_id(comment_id, post_id)
+                                
+                                # Get thread context
+                                context = st.session_state.reddit_scout.get_comment_context(comment_id, depth=3)
+                                
+                                # Display preview
+                                st.markdown("---")
+                                st.subheader("💬 Comment Preview")
+                                
+                                badge_html = f'<span style="background-color:#b71c1c; color:white; padding:4px 12px; border-radius:15px; font-size:0.85em; font-weight:bold;">↩️ REPLY to @{comment_data["author"]}</span>'
+                                st.markdown(badge_html, unsafe_allow_html=True)
+                                
+                                st.markdown(f"**Original Post:** {comment_data['post_title']}")
+                                st.caption(f"r/{comment_data['subreddit']}")
+                                
+                                with st.expander("View Comment You're Replying To", expanded=True):
+                                    st.markdown(f"**@{comment_data['author']} said:**")
+                                    st.write(comment_data['body'])
+                                
+                                if context:
+                                    with st.expander("Thread Context (Earlier Comments)"):
+                                        for i, ctx in enumerate(context, 1):
+                                            st.caption(f"{i}. @{ctx['author']}: {ctx['body']}")
+                                
+                                # Generate reply
+                                with st.spinner("Generating reply draft..."):
+                                    draft = st.session_state.copywriter.generate_reply_draft(comment_data, context)
+                                
+                                if draft.status == "error":
+                                    st.error("Failed to generate reply. Please check your API settings.")
+                                else:
+                                    st.markdown("---")
+                                    st.subheader("✍️ Generated Reply")
+                                    
+                                    draft_text = st.text_area(
+                                        f"Your reply to @{comment_data['author']}",
+                                        value=draft.content,
+                                        height=200,
+                                        key="manual_reply"
+                                    )
+                                    
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        if st.button("💾 Save to Briefings", type="primary"):
+                                            # Use comment_id as unique identifier for replies
+                                            st.session_state.db.save_manual_briefing(
+                                                post_id=comment_id,  # Use comment_id as primary key
+                                                subreddit=comment_data['subreddit'],
+                                                title=f"Reply to @{comment_data['author']} in: {comment_data['post_title']}",
+                                                post_content=comment_data['body'],
+                                                post_url=f"https://reddit.com{comment_data['permalink']}",
+                                                draft_content=draft_text,
+                                                parent_comment_id=comment_id,
+                                                parent_author=comment_data['author']
+                                            )
+                                            st.success("✅ Saved to Briefings!")
+                                            time.sleep(1)
+                                            st.rerun()
+                                    
+                                    with col2:
+                                        if st.button("🗑️ Discard"):
+                                            st.rerun()
+                    
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
+                        st.caption("The post/comment may have been deleted or is unavailable.")
     
     if page == "Settings":
         st.title("⚙️ Settings")
@@ -405,14 +580,32 @@ if st.session_state.get("authentication_status"):
             for item in briefings:
                 with st.container():
                     # Card Styling
-                    badge_class = f"intent-{item['intent']}"
+                    badge_class = f"intent-{item['intent'].lower()}" if item.get('intent') else "intent-ignore"
+                    
+                    # Source badge
+                    source = item.get('source', 'auto')
+                    source_badge = "🤖 Auto" if source == 'auto' else "👤 Manual"
+                    source_color = "#4CAF50" if source == 'auto' else "#FF9800"
+                    
+                    # Reply context
+                    reply_context = ""
+                    if item.get('parent_comment_id') and item.get('parent_author'):
+                        reply_context = f"""
+                        <div style="background-color:#fff3cd; padding:8px; border-radius:5px; margin-bottom:10px; border-left:3px solid #ff9800;">
+                            <strong>↩️ Reply to @{item['parent_author']}</strong>
+                        </div>
+                        """
                     
                     st.markdown(f"""
                     <div class="briefing-card">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                            <span class="intent-badge {badge_class}">{item['intent'].upper()}</span>
+                            <div>
+                                <span class="intent-badge {badge_class}">{item['intent'].upper()}</span>
+                                <span style="background-color:{source_color}; color:white; padding:4px 12px; border-radius:15px; font-size:0.85em; font-weight:bold; margin-left:8px;">{source_badge}</span>
+                            </div>
                             <span style="color:#666; font-size:0.9em;">r/{item['subreddit']} • Score: Unknown</span>
                         </div>
+                        {reply_context}
                         <h4>{item['title']}</h4>
                         <p style="font-size:0.95em; color:#444;">{item['post_content'][:300]}...</p>
                         <a href="{item['post_url']}" target="_blank" style="text-decoration:none; color:#0d47a1; font-weight:bold; font-size:0.9em;">🔗 Open Reddit Source</a>
