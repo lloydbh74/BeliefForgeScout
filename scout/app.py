@@ -610,6 +610,21 @@ if st.session_state.get("authentication_status"):
                     
                     status.update(label="Tests Complete!", state="complete", expanded=True)
 
+        # --- DANGER ZONE ---
+        st.markdown("---")
+        with st.expander("☢️ Danger Zone", expanded=False):
+            st.warning("These actions are destructive and cannot be undone.")
+            
+            # Use a popover for confirmation (Modern Streamlit)
+            with st.popover("💥 Clear Campaign Data"):
+                st.write("This will remove all Mission Briefings and clear your discovery history. Your settings will be preserved.")
+                if st.button("Confirm Reset", type="primary"):
+                    st.session_state.db.clear_campaign_data()
+                    st.success("Campaign data cleared! Return to the dashboard for a fresh start.")
+                    st.balloons()
+                    time.sleep(1)
+                    st.rerun()
+
     elif page == "Briefings":
         st.title("🦅 Mission Briefings")
         

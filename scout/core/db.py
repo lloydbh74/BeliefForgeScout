@@ -236,3 +236,13 @@ class ScoutDB:
                 "replies_received": row[2] or 0,
                 "handshakes": row[3] or 0
             }
+
+    def clear_campaign_data(self):
+        """Wipe discovered posts and briefings (reset campaign)."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM briefings")
+            cursor.execute("DELETE FROM processed_posts")
+            cursor.execute("DELETE FROM engagements")
+            conn.commit()
+        logger.info("💥 Campaign data cleared (briefings, processed_posts, engagements).")
