@@ -20,7 +20,7 @@ class RedditConfig:
 class AIConfig:
     api_key: str
     base_url: str = "https://openrouter.ai/api/v1"
-    tier1_model: str = "google/gemini-3-flash-preview:free" # Using stable free Gemini 3
+    tier1_model: str = "openrouter/free" # Dynamic free model selection
     tier2_model: str = "anthropic/claude-3-haiku"
 
 @dataclass
