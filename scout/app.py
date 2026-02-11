@@ -734,24 +734,24 @@ if st.session_state.get("authentication_status"):
                         """
                     
                     st.markdown(f"""
-                    <div class="briefing-card">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                            <div>
-                                <span class="intent-badge {badge_class}">{item['intent'].upper()}</span>
-                                <span style="background-color:{source_color}; color:white; padding:4px 12px; border-radius:15px; font-size:0.85em; font-weight:bold; margin-left:8px;">{source_badge}</span>
-                            </div>
-                            <span style="color:#666; font-size:0.9em;">
-                                r/{item['subreddit']} • ⬆️ {item.get('score', 0)} • 💬 {item.get('comment_count', 0)} • 🕒 {format_time_ago(item.get('post_created_at'))}
-                            </span>
-                        </div>
-                        {reply_context}
-                        <h4>{item['title']}</h4>
-                        <div style="max-height: 200px; overflow-y: auto; background-color: #f9f9f9; padding: 10px; border-radius: 5px; margin: 10px 0; font-family: sans-serif; font-size: 0.9em; white-space: pre-wrap; color: #333; border: 1px solid #eee;">
-                            {clean_html(item['post_content'])}
-                        </div>
-                        <a href="{item['post_url']}" target="_blank" style="text-decoration:none; color:#0d47a1; font-weight:bold; font-size:0.9em;">🔗 Open Reddit Source</a>
-                    </div>
-                    """, unsafe_allow_html=True)
+<div class="briefing-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div>
+            <span class="intent-badge {badge_class}">{item['intent'].upper()}</span>
+            <span style="background-color:{source_color}; color:white; padding:4px 12px; border-radius:15px; font-size:0.85em; font-weight:bold; margin-left:8px;">{source_badge}</span>
+        </div>
+        <span style="color:#666; font-size:0.9em;">
+            r/{item['subreddit']} • ⬆️ {item.get('score', 0)} • 💬 {item.get('comment_count', 0)} • 🕒 {format_time_ago(item.get('post_created_at'))}
+        </span>
+    </div>
+    {reply_context}
+    <h4>{item['title']}</h4>
+    <div style="max-height: 200px; overflow-y: auto; background-color: #f9f9f9; padding: 10px; border-radius: 5px; margin: 10px 0; font-family: sans-serif; font-size: 0.9em; white-space: pre-wrap; color: #333; border: 1px solid #eee;">
+{clean_html(item['post_content'])}
+    </div>
+    <a href="{item['post_url']}" target="_blank" style="text-decoration:none; color:#0d47a1; font-weight:bold; font-size:0.9em;">🔗 Open Reddit Source</a>
+</div>
+""", unsafe_allow_html=True)
     
                     # Editing & Actions
                     col1, col2 = st.columns([2, 1])
