@@ -26,6 +26,7 @@ class AIConfig:
 @dataclass
 class AppConfig:
     db_path: str = "scout.db"
+    log_path: str = "logs/scout.log" # NEW: Dedicated log path
     schedule_hours: List[int] = None
     
     def __post_init__(self):
@@ -55,6 +56,7 @@ class ScoutConfig:
 
         self.app = AppConfig(
             db_path=os.getenv("SCOUT_DB_PATH", "scout.db"),
+            log_path=os.getenv("SCOUT_LOG_PATH", "logs/scout.log"),
             schedule_hours=hours
         )
         

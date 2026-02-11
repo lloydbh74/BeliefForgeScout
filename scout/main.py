@@ -1,13 +1,20 @@
 import logging
+import os
 import time
 from typing import List
+from scout.config import config
+
+# Ensure log directory exists
+log_dir = os.path.dirname(config.app.log_path)
+if log_dir and not os.path.exists(log_dir):
+    os.makedirs(log_dir, exist_ok=True)
 
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("scout.log"),
+        logging.FileHandler(config.app.log_path),
         logging.StreamHandler()
     ]
 )
@@ -18,7 +25,6 @@ from scout.core.reddit_client import RedditScout
 from scout.core.screener import Screener
 from scout.core.copywriter import Copywriter
 from scout.core.db import ScoutDB
-from scout.config import config
 
 class ScoutEngine:
     def __init__(self):
