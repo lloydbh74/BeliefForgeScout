@@ -118,19 +118,25 @@ class ScoutDB:
     
     def save_manual_briefing(self, post_id: str, subreddit: str, title: str, 
                             post_content: str, post_url: str, draft_content: str,
+                            intent: str = 'Manual',
                             parent_comment_id: Optional[str] = None, 
-                            parent_author: Optional[str] = None):
+                            parent_author: Optional[str] = None,
+                            score: int = 0,
+                            comment_count: int = 0,
+                            post_created_at: Optional[float] = None):
         """Save a manually generated draft from URL input."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute('''
                 INSERT OR REPLACE INTO briefings 
                 (post_id, subreddit, title, post_content, post_url, draft_content, 
-                 intent, status, created_at, source, parent_comment_id, parent_author)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 intent, status, created_at, source, parent_comment_id, parent_author,
+                 score, comment_count, post_created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 post_id, subreddit, title, post_content, post_url, draft_content,
-                'Manual', 'pending', datetime.now(), 'manual', parent_comment_id, parent_author
+                intent, 'pending', datetime.now(), 'manual', parent_comment_id, parent_author,
+                score, comment_count, post_created_at
             ))
             conn.commit()
     

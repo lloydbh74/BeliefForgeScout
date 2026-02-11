@@ -167,6 +167,7 @@ if st.session_state.get("authentication_status"):
         .intent-strategy { background-color: #0d47a1; } /* Dark Blue */
         .intent-venting { background-color: #004d40; }  /* Dark Teal */
         .intent-ignore { background-color: #424242; }   /* Dark Gray */
+        .intent-manual { background-color: #e65100; }   /* Deep Orange */
     </style>
     """, unsafe_allow_html=True)
     
@@ -380,7 +381,11 @@ if st.session_state.get("authentication_status"):
                                                 title=post.title,
                                                 post_content=post.content,
                                                 post_url=post.url,
-                                                draft_content=draft_text
+                                                draft_content=draft_text,
+                                                intent='Manual', # Added intent
+                                                score=getattr(post, 'score', 0),
+                                                comment_count=getattr(post, 'comment_count', 0),
+                                                post_created_at=getattr(post, 'created_utc', None)
                                             )
                                             st.success("✅ Saved to Briefings!")
                                             time.sleep(1)
@@ -446,8 +451,12 @@ if st.session_state.get("authentication_status"):
                                                 post_content=comment_data['body'],
                                                 post_url=f"https://reddit.com{comment_data['permalink']}",
                                                 draft_content=draft_text,
+                                                intent="Reply",
                                                 parent_comment_id=comment_id,
-                                                parent_author=comment_data['author']
+                                                parent_author=comment_data['author'],
+                                                score=comment_data.get('score', 0),
+                                                comment_count=comment_data.get('replies', 0),
+                                                post_created_at=comment_data.get('created_utc')
                                             )
                                             st.success("✅ Saved to Briefings!")
                                             time.sleep(1)
