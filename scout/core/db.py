@@ -125,6 +125,7 @@ class ScoutDB:
                             comment_count: int = 0,
                             post_created_at: Optional[float] = None):
         """Save a manually generated draft from URL input."""
+        logger.info(f"💾 Saving manual briefing for {post_id} (Score: {score}, Intent: {intent})")
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -139,6 +140,7 @@ class ScoutDB:
                 score, comment_count, post_created_at
             ))
             conn.commit()
+            logger.info(f"✅ Manual briefing {post_id} saved successfully.")
     
     def check_duplicate_briefing(self, post_id: str) -> Optional[dict]:
         """Check if a briefing already exists for this post/comment."""
@@ -155,7 +157,9 @@ class ScoutDB:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM briefings WHERE status = 'pending' ORDER BY created_at DESC")
-            return [dict(row) for row in cursor.fetchall()]
+            results = [dict(row) for row in cursor.fetchall()]
+            logger.info(f"🔍 get_pending_briefings found {len(results)} items.")
+            return results
 
     def update_briefing_status(self, post_id: str, status: str, content: Optional[str] = None):
         """Update status (e.g., approved/discarded) and optionally the content (edited)."""
