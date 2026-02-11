@@ -43,9 +43,19 @@ class ScoutDB:
                     created_at TIMESTAMP,
                     source TEXT DEFAULT 'auto', -- 'auto' or 'manual'
                     parent_comment_id TEXT,
-                    parent_author TEXT
+                    parent_author TEXT,
+                    score INTEGER DEFAULT 0,
+                    comment_count INTEGER DEFAULT 0
                 )
             ''')
+
+            # Migration: Add score and comment_count to briefings if they don't exist
+            try:
+                cursor.execute("ALTER TABLE briefings ADD COLUMN score INTEGER DEFAULT 0")
+                cursor.execute("ALTER TABLE briefings ADD COLUMN comment_count INTEGER DEFAULT 0")
+            except sqlite3.OperationalError:
+                # Columns already exist
+                pass
             
             # Table for Engagements (Profile Watcher)
             cursor.execute('''
@@ -86,11 +96,12 @@ class ScoutDB:
             cursor = conn.cursor()
             cursor.execute('''
                 INSERT OR REPLACE INTO briefings 
-                (post_id, subreddit, title, post_content, post_url, draft_content, intent, status, created_at, source)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (post_id, subreddit, title, post_content, post_url, draft_content, intent, status, created_at, source, score, comment_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 post.id, post.subreddit, post.title, post.content, post.url, 
-                draft.content, intent, 'pending', datetime.now(), 'auto'
+                draft.content, intent, 'pending', datetime.now(), 'auto',
+                getattr(post, 'score', 0), getattr(post, 'comment_count', 0)
             ))
             conn.commit()
     

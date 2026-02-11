@@ -643,7 +643,7 @@ if st.session_state.get("authentication_status"):
                                 <span class="intent-badge {badge_class}">{item['intent'].upper()}</span>
                                 <span style="background-color:{source_color}; color:white; padding:4px 12px; border-radius:15px; font-size:0.85em; font-weight:bold; margin-left:8px;">{source_badge}</span>
                             </div>
-                            <span style="color:#666; font-size:0.9em;">r/{item['subreddit']} • Score: Unknown</span>
+                            <span style="color:#666; font-size:0.9em;">r/{item['subreddit']} • ⬆️ {item.get('score', 0)} • 💬 {item.get('comment_count', 0)}</span>
                         </div>
                         {reply_context}
                         <h4>{item['title']}</h4>
