@@ -50,15 +50,22 @@ class ScoutDB:
                 )
             ''')
 
-            # Migration: Add columns to briefings if they don't exist
-            try:
-                cursor.execute("ALTER TABLE briefings ADD COLUMN score INTEGER DEFAULT 0")
-                cursor.execute("ALTER TABLE briefings ADD COLUMN comment_count INTEGER DEFAULT 0")
-            except sqlite3.OperationalError: pass
-
-            try:
-                cursor.execute("ALTER TABLE briefings ADD COLUMN post_created_at REAL")
-            except sqlite3.OperationalError: pass
+            # Migration: Ensure all historically added columns exist
+            columns_to_add = [
+                ("source", "TEXT DEFAULT 'auto'"),
+                ("parent_comment_id", "TEXT"),
+                ("parent_author", "TEXT"),
+                ("score", "INTEGER DEFAULT 0"),
+                ("comment_count", "INTEGER DEFAULT 0"),
+                ("post_created_at", "REAL")
+            ]
+            
+            for col_name, col_type in columns_to_add:
+                try:
+                    cursor.execute(f"ALTER TABLE briefings ADD COLUMN {col_name} {col_type}")
+                except sqlite3.OperationalError:
+                    # Column already exists
+                    pass
             
             # Table for Engagements (Profile Watcher)
             cursor.execute('''
