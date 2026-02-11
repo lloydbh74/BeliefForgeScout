@@ -60,7 +60,6 @@ CORE_CHECKS = [
     ("Lint Check", ".agent/skills/lint-and-validate/scripts/lint_runner.py", True),
     ("Schema Validation", ".agent/skills/database-design/scripts/schema_validator.py", False),
     ("Test Runner", ".agent/skills/testing-patterns/scripts/test_runner.py", False),
-    ("UX Audit", ".agent/skills/frontend-design/scripts/ux_audit.py", False),
     ("SEO Check", ".agent/skills/seo-fundamentals/scripts/seo_checker.py", False),
 ]
 
