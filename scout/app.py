@@ -15,6 +15,7 @@ from scout.core.system import SystemManager
 from st_clipboard import copy_to_clipboard
 import streamlit_authenticator as stauth
 import os
+import re
 
 # Page Config
 st.set_page_config(
@@ -43,20 +44,37 @@ def get_system_manager():
 system_manager = get_system_manager()
 
 # --- HELPERS ---
-def format_time_ago(timestamp: Optional[float]) -> str:
-    """Convert UTC timestamp to 'Time Ago' format."""
-    if not timestamp:
-        return "Unknown"
+def format_time_ago(timestamp_float):
+    if not timestamp_float:
+        return ""
     
-    diff = time.time() - timestamp
-    if diff < 60:
-        return f"{int(diff)}s ago"
-    elif diff < 3600:
-        return f"{int(diff // 60)}m ago"
-    elif diff < 86400:
-        return f"{int(diff // 3600)}h ago"
+    dt = datetime.fromtimestamp(timestamp_float)
+    now = datetime.now()
+    diff = now - dt
+    
+    if diff.days > 0:
+        return f"{diff.days}d ago"
+    elif diff.seconds > 3600:
+        return f"{diff.seconds // 3600}h ago"
+    elif diff.seconds > 60:
+        return f"{diff.seconds // 60}m ago"
     else:
-        return f"{int(diff // 86400)}d ago"
+        return "Just now"
+
+def clean_html(raw_html):
+    """Remove HTML tags and unescape entities from a string."""
+    if not raw_html:
+        return ""
+    
+    # First unescape (e.g. &lt; -> <)
+    import html
+    text = html.unescape(raw_html)
+    
+    # Then strip tags
+    cleanr = re.compile('<.*?>')
+    cleantext = re.sub(cleanr, '', text)
+    
+    return cleantext
 
 def scheduled_job():
     """Wrapper to run mission in background."""
@@ -728,7 +746,9 @@ if st.session_state.get("authentication_status"):
                         </div>
                         {reply_context}
                         <h4>{item['title']}</h4>
-                        <p style="font-size:0.95em; color:#444;">{item['post_content'][:300]}...</p>
+                        <div style="max-height: 200px; overflow-y: auto; background-color: #f9f9f9; padding: 10px; border-radius: 5px; margin: 10px 0; font-family: sans-serif; font-size: 0.9em; white-space: pre-wrap; color: #333; border: 1px solid #eee;">
+                            {clean_html(item['post_content'])}
+                        </div>
                         <a href="{item['post_url']}" target="_blank" style="text-decoration:none; color:#0d47a1; font-weight:bold; font-size:0.9em;">🔗 Open Reddit Source</a>
                     </div>
                     """, unsafe_allow_html=True)
