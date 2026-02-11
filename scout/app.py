@@ -552,7 +552,47 @@ if st.session_state.get("authentication_status"):
                     st.session_state['telegram_chat_id'] = tg_chat
                 else:
                     st.error("Failed to save settings.")
-    
+
+        # --- DIAGNOSTICS SECTION ---
+        st.markdown("---")
+        with st.expander("🛠️ Diagnostics & Connectivity", expanded=False):
+            st.info("Test your connections to Reddit and AI from this environment.")
+            
+            if st.button("🔍 Run Connectivity Tests"):
+                # 1. Reddit Test
+                with st.status("Testing Reddit API...", expanded=True) as status:
+                    try:
+                        import praw
+                        test_reddit = praw.Reddit(
+                            client_id=config.reddit.client_id,
+                            client_secret=config.reddit.client_secret,
+                            user_agent=config.reddit.user_agent
+                        )
+                        # Try to fetch one post from a safe sub
+                        list(test_reddit.subreddit("test").new(limit=1))
+                        st.write("✅ Reddit: Connection Successful")
+                    except Exception as e:
+                        st.error(f"❌ Reddit: Connection Failed - {e}")
+                    
+                    # 2. AI Test
+                    try:
+                        from openai import OpenAI
+                        test_ai = OpenAI(
+                            base_url=config.ai.base_url,
+                            api_key=config.ai.api_key
+                        )
+                        # Simple ping
+                        test_ai.chat.completions.create(
+                            model=config.ai.tier1_model,
+                            messages=[{"role": "user", "content": "ping"}],
+                            max_tokens=5
+                        )
+                        st.write("✅ AI Brain: Connection Successful")
+                    except Exception as e:
+                        st.error(f"❌ AI Brain: Connection Failed - {e}")
+                    
+                    status.update(label="Tests Complete!", state="complete", expanded=True)
+
     elif page == "Briefings":
         st.title("🦅 Mission Briefings")
         

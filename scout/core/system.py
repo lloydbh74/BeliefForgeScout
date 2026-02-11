@@ -40,13 +40,25 @@ class SystemManager:
                             k, v = line.strip().split("=", 1)
                             env_vars[k] = v
 
-            # Update with new values
-            env_vars["OPENROUTER_API_KEY"] = api_keys.get('openrouter_api_key', env_vars.get("OPENROUTER_API_KEY", ""))
-            env_vars["REDDIT_CLIENT_ID"] = api_keys.get('reddit_client_id', env_vars.get("REDDIT_CLIENT_ID", ""))
-            env_vars["REDDIT_CLIENT_SECRET"] = api_keys.get('reddit_client_secret', env_vars.get("REDDIT_CLIENT_SECRET", ""))
-            env_vars["REDDIT_USERNAME"] = settings.get('reddit_username', env_vars.get("REDDIT_USERNAME", ""))
-            env_vars["TELEGRAM_BOT_TOKEN"] = settings.get('telegram_token', env_vars.get("TELEGRAM_BOT_TOKEN", ""))
-            env_vars["TELEGRAM_CHAT_ID"] = settings.get('telegram_chat_id', env_vars.get("TELEGRAM_CHAT_ID", ""))
+            # Update with new values (Only if non-empty)
+            if api_keys.get('openrouter_api_key'):
+                env_vars["OPENROUTER_API_KEY"] = api_keys['openrouter_api_key']
+            
+            if api_keys.get('reddit_client_id'):
+                env_vars["REDDIT_CLIENT_ID"] = api_keys['reddit_client_id']
+                
+            if api_keys.get('reddit_client_secret'):
+                env_vars["REDDIT_CLIENT_SECRET"] = api_keys['reddit_client_secret']
+                
+            if settings.get('reddit_username'):
+                env_vars["REDDIT_USERNAME"] = settings['reddit_username']
+                
+            if settings.get('telegram_token'):
+                env_vars["TELEGRAM_BOT_TOKEN"] = settings['telegram_token']
+                
+            if settings.get('telegram_chat_id'):
+                env_vars["TELEGRAM_CHAT_ID"] = settings['telegram_chat_id']
+                
             env_vars["SCOUT_SCHEDULE_HOURS"] = "7,14,21"
 
             # Write back
