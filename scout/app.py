@@ -342,133 +342,171 @@ if st.session_state.get("authentication_status"):
                                 # Fetch post
                                 post = st.session_state.reddit_scout.fetch_post_by_id(post_id)
                                 
-                                # Display preview
-                                st.markdown("---")
-                                st.subheader("📌 Post Preview")
-                                
-                                badge_html = f'<span style="background-color:#0d47a1; color:white; padding:4px 12px; border-radius:15px; font-size:0.85em; font-weight:bold;">💬 COMMENT</span>'
-                                st.markdown(badge_html, unsafe_allow_html=True)
-                                
-                                st.markdown(f"**{post.title}**")
-                                st.caption(f"👤 u/{post.author} • r/{post.subreddit}")
-                                
-                                with st.expander("View Post Content", expanded=True):
-                                    st.write(post.content[:500] + ("..." if len(post.content) > 500 else ""))
-                                
                                 # Generate draft
                                 with st.spinner("Generating comment draft..."):
                                     draft = st.session_state.copywriter.generate_draft(post, "Manual")
-                                
-                                if draft.status == "error":
-                                    st.error("Failed to generate draft. Please check your API settings.")
+                                    
+                                if draft.status != "error":
+                                    # Store in session state
+                                    st.session_state.current_draft_type = 'post'
+                                    st.session_state.current_draft_obj = draft
+                                    st.session_state.current_post_obj = post
+                                    st.session_state.current_parsed_url = parsed
                                 else:
-                                    st.markdown("---")
-                                    st.subheader("✍️ Generated Draft")
-                                    
-                                    draft_text = st.text_area(
-                                        "Edit your comment",
-                                        value=draft.content,
-                                        height=200,
-                                        key="manual_draft"
-                                    )
-                                    
-                                    col1, col2 = st.columns(2)
-                                    with col1:
-                                        if st.button("💾 Save to Briefings", type="primary"):
-                                            st.session_state.db.save_manual_briefing(
-                                                post_id=post.id,
-                                                subreddit=post.subreddit,
-                                                title=post.title,
-                                                post_content=post.content,
-                                                post_url=post.url,
-                                                draft_content=draft_text,
-                                                intent='Manual', # Added intent
-                                                score=getattr(post, 'score', 0),
-                                                comment_count=getattr(post, 'comment_count', 0),
-                                                post_created_at=getattr(post, 'created_utc', None)
-                                            )
-                                            st.success("✅ Saved to Briefings!")
-                                            time.sleep(1)
-                                            st.rerun()
-                                    
-                                    with col2:
-                                        if st.button("🗑️ Discard"):
-                                            st.rerun()
-                            
+                                    st.error("Failed to generate draft.")
+
                             else:  # comment
                                 comment_id = parsed['comment_id']
                                 
                                 # Fetch comment
                                 comment_data = st.session_state.reddit_scout.fetch_comment_by_id(comment_id, post_id)
-                                
-                                # Get thread context
                                 context = st.session_state.reddit_scout.get_comment_context(comment_id, depth=3)
-                                
-                                # Display preview
-                                st.markdown("---")
-                                st.subheader("💬 Comment Preview")
-                                
-                                badge_html = f'<span style="background-color:#b71c1c; color:white; padding:4px 12px; border-radius:15px; font-size:0.85em; font-weight:bold;">↩️ REPLY to @{comment_data["author"]}</span>'
-                                st.markdown(badge_html, unsafe_allow_html=True)
-                                
-                                st.markdown(f"**Original Post:** {comment_data['post_title']}")
-                                st.caption(f"r/{comment_data['subreddit']}")
-                                
-                                with st.expander("View Comment You're Replying To", expanded=True):
-                                    st.markdown(f"**@{comment_data['author']} said:**")
-                                    st.write(comment_data['body'])
-                                
-                                if context:
-                                    with st.expander("Thread Context (Earlier Comments)"):
-                                        for i, ctx in enumerate(context, 1):
-                                            st.caption(f"{i}. @{ctx['author']}: {ctx['body']}")
                                 
                                 # Generate reply
                                 with st.spinner("Generating reply draft..."):
                                     draft = st.session_state.copywriter.generate_reply_draft(comment_data, context)
-                                
-                                if draft.status == "error":
-                                    st.error("Failed to generate reply. Please check your API settings.")
+                                    
+                                if draft.status != "error":
+                                    # Store in session state
+                                    st.session_state.current_draft_type = 'comment'
+                                    st.session_state.current_draft_obj = draft
+                                    st.session_state.current_comment_data = comment_data
+                                    st.session_state.current_comment_context = context
+                                    st.session_state.current_parsed_url = parsed
                                 else:
-                                    st.markdown("---")
-                                    st.subheader("✍️ Generated Reply")
-                                    
-                                    draft_text = st.text_area(
-                                        f"Your reply to @{comment_data['author']}",
-                                        value=draft.content,
-                                        height=200,
-                                        key="manual_reply"
-                                    )
-                                    
-                                    col1, col2 = st.columns(2)
-                                    with col1:
-                                        if st.button("💾 Save to Briefings", type="primary"):
-                                            # Use comment_id as unique identifier for replies
-                                            st.session_state.db.save_manual_briefing(
-                                                post_id=comment_id,  # Use comment_id as primary key
-                                                subreddit=comment_data['subreddit'],
-                                                title=f"Reply to @{comment_data['author']} in: {comment_data['post_title']}",
-                                                post_content=comment_data['body'],
-                                                post_url=f"https://reddit.com{comment_data['permalink']}",
-                                                draft_content=draft_text,
-                                                intent="Reply",
-                                                parent_comment_id=comment_id,
-                                                parent_author=comment_data['author'],
-                                                score=comment_data.get('score', 0),
-                                                comment_count=comment_data.get('replies', 0),
-                                                post_created_at=comment_data.get('created_utc')
-                                            )
-                                            st.success("✅ Saved to Briefings!")
-                                            time.sleep(1)
-                                            st.rerun()
-                                    
-                                    with col2:
-                                        if st.button("🗑️ Discard"):
-                                            st.rerun()
-                    
+                                    st.error("Failed to generate reply.")
+
+                            st.rerun() # Rerun to show the draft UI below
+
                     except Exception as e:
                         st.error(f"Error: {str(e)}")
                         st.caption("The post/comment may have been deleted or is unavailable.")
+
+        # --- PERSISTENT PREVIEW & SAVE UI ---
+        if 'current_draft_obj' in st.session_state:
+            
+            # --- POST UI ---
+            if st.session_state.current_draft_type == 'post':
+                post = st.session_state.current_post_obj
+                draft = st.session_state.current_draft_obj
+                
+                # Display preview
+                st.markdown("---")
+                st.subheader("📌 Post Preview")
+                badge_html = f'<span style="background-color:#0d47a1; color:white; padding:4px 12px; border-radius:15px; font-size:0.85em; font-weight:bold;">💬 COMMENT</span>'
+                st.markdown(badge_html, unsafe_allow_html=True)
+                
+                st.markdown(f"**{post.title}**")
+                st.caption(f"👤 u/{post.author} • r/{post.subreddit}")
+                
+                with st.expander("View Post Content", expanded=True):
+                    st.write(post.content[:500] + ("..." if len(post.content) > 500 else ""))
+                
+                st.markdown("---")
+                st.subheader("✍️ Generated Draft")
+                
+                draft_text = st.text_area(
+                    "Edit your comment",
+                    value=draft.content,
+                    height=200,
+                    key="manual_draft"
+                )
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("💾 Save to Briefings", type="primary"):
+                        st.session_state.db.save_manual_briefing(
+                            post_id=post.id,
+                            subreddit=post.subreddit,
+                            title=post.title,
+                            post_content=post.content,
+                            post_url=post.url,
+                            draft_content=draft_text,
+                            intent='Manual',
+                            score=getattr(post, 'score', 0),
+                            comment_count=getattr(post, 'comment_count', 0),
+                            post_created_at=getattr(post, 'created_utc', None)
+                        )
+                        st.success("✅ Saved to Briefings!")
+                        
+                        # Cleanup
+                        del st.session_state.current_draft_obj
+                        del st.session_state.current_draft_type
+                        time.sleep(1)
+                        st.rerun()
+                
+                with col2:
+                    if st.button("🗑️ Discard"):
+                        del st.session_state.current_draft_obj
+                        del st.session_state.current_draft_type
+                        st.rerun()
+
+            # --- COMMENT UI ---
+            elif st.session_state.current_draft_type == 'comment':
+                comment_data = st.session_state.current_comment_data
+                context = st.session_state.current_comment_context
+                draft = st.session_state.current_draft_obj
+                
+                # Display preview
+                st.markdown("---")
+                st.subheader("💬 Comment Preview")
+                
+                badge_html = f'<span style="background-color:#b71c1c; color:white; padding:4px 12px; border-radius:15px; font-size:0.85em; font-weight:bold;">↩️ REPLY to @{comment_data["author"]}</span>'
+                st.markdown(badge_html, unsafe_allow_html=True)
+                
+                st.markdown(f"**Original Post:** {comment_data['post_title']}")
+                st.caption(f"r/{comment_data['subreddit']}")
+                
+                with st.expander("View Comment You're Replying To", expanded=True):
+                    st.markdown(f"**@{comment_data['author']} said:**")
+                    st.write(comment_data['body'])
+                
+                if context:
+                    with st.expander("Thread Context (Earlier Comments)"):
+                        for i, ctx in enumerate(context, 1):
+                            st.caption(f"{i}. @{ctx['author']}: {ctx['body']}")
+                
+                st.markdown("---")
+                st.subheader("✍️ Generated Reply")
+                
+                draft_text = st.text_area(
+                    f"Your reply to @{comment_data['author']}",
+                    value=draft.content,
+                    height=200,
+                    key="manual_reply"
+                )
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    comment_id = st.session_state.current_parsed_url['comment_id']
+                    if st.button("💾 Save to Briefings", type="primary"):
+                        st.session_state.db.save_manual_briefing(
+                            post_id=comment_id,
+                            subreddit=comment_data['subreddit'],
+                            title=f"Reply to @{comment_data['author']} in: {comment_data['post_title']}",
+                            post_content=comment_data['body'],
+                            post_url=f"https://reddit.com{comment_data['permalink']}",
+                            draft_content=draft_text,
+                            intent="Reply",
+                            parent_comment_id=comment_id,
+                            parent_author=comment_data['author'],
+                            score=comment_data.get('score', 0),
+                            comment_count=comment_data.get('replies', 0),
+                            post_created_at=comment_data.get('created_utc')
+                        )
+                        st.success("✅ Saved to Briefings!")
+                        
+                        # Cleanup
+                        del st.session_state.current_draft_obj
+                        del st.session_state.current_draft_type
+                        time.sleep(1)
+                        st.rerun()
+                
+                with col2:
+                    if st.button("🗑️ Discard"):
+                        del st.session_state.current_draft_obj
+                        del st.session_state.current_draft_type
+                        st.rerun()
     
     if page == "Settings":
         st.title("⚙️ Settings")
