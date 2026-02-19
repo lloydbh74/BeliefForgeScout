@@ -1,6 +1,6 @@
 # Code Audit Persona Selection: BeliefForgeScout
 
-Based on the [agent-orchestrator.md](file:///c:/Users/lloyd/Sync/BeliefForgeScout-main/scout/agents/agent-orchestrator.md) and the [agent-registry.md](file:///c:/Users/lloyd/Sync/BeliefForgeScout-main/scout/agents/agent-registry.md), the following personas have been selected to perform a comprehensive code audit of the BeliefForgeScout codebase.
+Based on the agent files in `.agent/agents/`, the following personas have been selected to perform a comprehensive code audit of the BeliefForgeScout codebase.
 
 ## 👥 Recommended Personas
 
@@ -24,4 +24,4 @@ Based on the [agent-orchestrator.md](file:///c:/Users/lloyd/Sync/BeliefForgeScou
 
 ---
 > [!NOTE]
-> These personas should be invoked via the `AgentOrchestrator` to ensure proper coordination and adherence to the QuestOS Core Directive.
+> These personas should be invoked via the `AgentOrchestrator` to ensure proper coordination.

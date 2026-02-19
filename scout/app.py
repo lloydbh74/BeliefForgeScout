@@ -439,7 +439,7 @@ if st.session_state.get("authentication_status"):
                             title=post.title,
                             post_content=post.content,
                             post_url=post.url,
-                            draft_content=draft_text,
+                            draft_content=draft_text.strip(),
                             intent='Manual',
                             score=getattr(post, 'score', 0),
                             comment_count=getattr(post, 'comment_count', 0),
@@ -504,7 +504,7 @@ if st.session_state.get("authentication_status"):
                             title=f"Reply to @{comment_data['author']} in: {comment_data['post_title']}",
                             post_content=comment_data['body'],
                             post_url=f"https://reddit.com{comment_data['permalink']}",
-                            draft_content=draft_text,
+                            draft_content=draft_text.strip(),
                             intent="Reply",
                             parent_comment_id=comment_id,
                             parent_author=comment_data['author'],
@@ -785,7 +785,7 @@ r/{item['subreddit']} • ⬆️ {item.get('score', 0)} • 💬 {item.get('comm
                             
                             if st.button("✅ Approve & Open", key=f"approve_{item['post_id']}", type="primary"):
                                  # 1. Database
-                                 st.session_state.db.update_briefing_status(item['post_id'], 'approved', draft_text) 
+                                 st.session_state.db.update_briefing_status(item['post_id'], 'approved', draft_text.strip()) 
                                  
                                  # 2. Rate Limit
                                  st.session_state['last_post_time'] = time.time()
