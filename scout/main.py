@@ -139,6 +139,9 @@ class ScoutEngine:
             self.db.upsert_engagement(eng)
             if eng['handshake']:
                 new_handshakes += 1
+        
+        # 3. Reconcile Briefings (Mark as 'posted')
+        self.db.reconcile_posted_briefings()
                 
         logger.info(f"🏁 Profile Watcher Complete. {new_handshakes} handshakes active.")
         return len(engagements), new_handshakes

@@ -194,7 +194,7 @@ if st.session_state.get("authentication_status"):
         st.title("🛡️ The Scout")
         
         # Navigation
-        page = st.radio("Go to", ["Briefings", "Quick Draft", "Engagements", "Settings"])
+        page = st.radio("Go to", ["Briefings", "Archive", "Quick Draft", "Engagements", "Settings"])
         
         st.markdown("---")
         
@@ -266,6 +266,67 @@ if st.session_state.get("authentication_status"):
     
     # Main Content
     
+    if page == "Archive":
+        st.title("📂 History & Archive")
+        st.markdown("Reviewing your past decisions and actual results.")
+        
+        briefings = st.session_state.db.get_archived_briefings(limit=100)
+        
+        if not briefings:
+            st.info("No archived briefings found yet. Approve or Discard some drafts first!")
+        else:
+            # Stats for Archive
+            approved_count = len([b for b in briefings if b['status'] in ('approved', 'posted')])
+            discarded_count = len([b for b in briefings if b['status'] == 'discarded'])
+            handshake_count = len([b for b in briefings if b.get('has_handshake')])
+            
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Total Decisions", len(briefings))
+            c2.metric("Approvals", approved_count)
+            c3.metric("Handshakes", handshake_count)
+            
+            st.markdown("---")
+            
+            # Group by Status or just list? Let's list with filters
+            status_filter = st.multiselect("Filter by Status", ["posted", "approved", "discarded"], default=["posted", "approved", "discarded"])
+            
+            for item in briefings:
+                if item['status'] not in status_filter:
+                    continue
+                
+                with st.expander(f"[{item['status'].upper()}] r/{item['subreddit']} - {item['title'][:60]}..."):
+                    col1, col2 = st.columns([1, 1])
+                    
+                    with col1:
+                        st.markdown("**Original Post**")
+                        st.caption(f"Posted {format_time_ago(item.get('post_created_at'))}")
+                        st.markdown(f"""
+                        <div style="background-color: #f8f9fa; padding: 10px; border-radius: 5px; border: 1px solid #dee2e6; color: #333; margin-bottom: 10px; font-size: 0.9em; max-height: 200px; overflow-y: auto;">
+                        {clean_html(item['post_content'])}
+                        </div>
+                        """, unsafe_allow_html=True)
+                        st.write(f"🔗 [View on Reddit]({item['post_url']})")
+                    
+                    with col2:
+                        st.markdown("**Your Action**")
+                        st.caption(f"Decision made {format_time_ago(datetime.fromisoformat(item['created_at']).timestamp() if isinstance(item['created_at'], str) else item['created_at'].timestamp())}")
+                        
+                        st.markdown(f"""
+                        <div style="background-color: #e9f7ef if item['status'] != 'discarded' else '#fdf2f2'; padding: 10px; border-radius: 5px; border: 1px solid #c3e6cb; color: #155724; font-size: 0.9em;">
+                        {item['draft_content']}
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        if item['status'] == 'posted':
+                            st.divider()
+                            st.markdown("📊 **Live Performance**")
+                            sc1, sc2 = st.columns(2)
+                            sc1.metric("Karma", item.get('live_score', 0))
+                            sc2.metric("Replies", item.get('live_replies', 0))
+                            
+                            if item.get('has_handshake'):
+                                st.success("🤝 Handshake detected! This thread is active.")
+
     if page == "Engagements":
         st.title("🤝 Engagement Tracker")
         st.markdown("Monitoring your recent comments for replies (Handshakes).")

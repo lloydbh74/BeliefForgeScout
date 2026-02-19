@@ -3,6 +3,7 @@ from typing import List, Optional
 from openai import OpenAI
 
 from .models import ScoutPost, DraftReply
+from .text_utils import normalize_whitespace
 from ..config import config
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,7 @@ class Copywriter:
             )
             
             content = response.choices[0].message.content.strip()
+            content = normalize_whitespace(content)
             
             return DraftReply(
                 post_id=post.id,
@@ -133,6 +135,7 @@ class Copywriter:
             )
             
             content = response.choices[0].message.content.strip()
+            content = normalize_whitespace(content)
             
             return DraftReply(
                 post_id=comment_data['post_id'],

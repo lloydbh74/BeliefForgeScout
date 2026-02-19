@@ -161,6 +161,46 @@ class ScoutDB:
             logger.info(f"🔍 get_pending_briefings found {len(results)} items.")
             return results
 
+    def get_archived_briefings(self, limit: int = 50) -> List[dict]:
+        """Get all past decisions (approved, discarded, posted)."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            # Statuses that are considered archived
+            cursor.execute("""
+                SELECT b.*, e.score as live_score, e.reply_count as live_replies, e.has_handshake
+                FROM briefings b
+                LEFT JOIN engagements e ON b.post_id = e.post_id
+                WHERE b.status IN ('approved', 'discarded', 'posted')
+                ORDER BY b.created_at DESC
+                LIMIT ?
+            """, (limit,))
+            return [dict(row) for row in cursor.fetchall()]
+
+    def reconcile_posted_briefings(self):
+        """
+        Check if 'approved' briefings now exist in the engagements table.
+        If they do, it means the user actually posted them.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            # 1. Identify approved briefings that have a corresponding engagement
+            cursor.execute("""
+                SELECT post_id FROM briefings 
+                WHERE status = 'approved' 
+                AND post_id IN (SELECT post_id FROM engagements)
+            """)
+            posted_ids = [row[0] for row in cursor.fetchall()]
+            
+            if posted_ids:
+                logger.info(f"🔄 Reconciling {len(posted_ids)} briefings as 'posted'.")
+                # 2. Update their status
+                cursor.executemany(
+                    "UPDATE briefings SET status = 'posted' WHERE post_id = ?",
+                    [(pid,) for pid in posted_ids]
+                )
+                conn.commit()
+
     def update_briefing_status(self, post_id: str, status: str, content: Optional[str] = None):
         """Update status (e.g., approved/discarded) and optionally the content (edited)."""
         with sqlite3.connect(self.db_path) as conn:
