@@ -17,7 +17,8 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Define path to SQLite DB
-SQLITE_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scout.db')
+SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH", os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scout.db'))
+print(f"Using SQLite database at: {SQLITE_DB_PATH}")
 
 def fetch_sqlite_data(query, params=()):
     try:
