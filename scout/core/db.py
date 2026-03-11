@@ -131,25 +131,37 @@ class ScoutDB:
     def get_archived_briefings(self, limit: int = 50) -> List[dict]:
         """Get all past decisions (approved, discarded, posted)."""
         try:
+            # 1. Fetch briefings
             response = self.supabase.table("scout_briefings").select(
-                "*, scout_engagements(score, reply_count, has_handshake)"
+                "*"
             ).in_("status", ["approved", "discarded", "posted", "archived"]).order(
                 "created_at", desc=True
             ).limit(limit).execute()
             
-            # Flatten or format response for UI
+            briefings = response.data
+            if not briefings:
+                return []
+                
+            # 2. Fetch corresponding engagements manually (since FK was dropped)
+            post_ids = [b["post_id"] for b in briefings]
+            eng_response = self.supabase.table("scout_engagements").select(
+                "post_id, score, reply_count, has_handshake"
+            ).in_("post_id", post_ids).execute()
+            
+            # Map engagements by post_id
+            eng_map = {}
+            for eng in eng_response.data:
+                # Keep the first one found or highest score etc, simplest is first
+                if eng["post_id"] not in eng_map:
+                    eng_map[eng["post_id"]] = eng
+                    
+            # 3. Combine
             formatted_results = []
-            for item in response.data:
-                # Add engagement info if it exists
-                engagements = item.get("scout_engagements", [])
-                engagement = engagements[0] if engagements else {}
+            for item in briefings:
+                engagement = eng_map.get(item["post_id"], {})
                 item["live_score"] = engagement.get("score")
                 item["live_replies"] = engagement.get("reply_count")
                 item["has_handshake"] = engagement.get("has_handshake")
-                
-                # Cleanup joined table key
-                if "scout_engagements" in item:
-                    del item["scout_engagements"]
                     
                 formatted_results.append(item)
                 
