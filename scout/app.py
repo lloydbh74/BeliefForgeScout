@@ -55,11 +55,23 @@ def get_system_manager():
 system_manager = get_system_manager()
 
 # --- HELPERS ---
-def format_time_ago(timestamp_float):
-    if not timestamp_float:
+def format_time_ago(ts):
+    if not ts:
         return ""
     
-    dt = datetime.fromtimestamp(timestamp_float)
+    # Handle ISO strings (from Supabase) or epoch floats (from PRAW)
+    if isinstance(ts, str):
+        try:
+            # Handle potential 'Z' or offset
+            dt = datetime.fromisoformat(ts.replace('Z', '+00:00'))
+            # Convert to naive or comparable localized
+            if dt.tzinfo:
+                dt = dt.replace(tzinfo=None)
+        except ValueError:
+            return ts
+    else:
+        dt = datetime.fromtimestamp(ts)
+        
     now = datetime.now()
     diff = now - dt
     

@@ -45,6 +45,13 @@ class RedditScout:
             for comment in submission.comments[:3]:
                 top_comments.append(comment.body[:200] + "...")
 
+        # Metadata tracking
+        score = getattr(submission, 'score', 0)
+        num_comments = getattr(submission, 'num_comments', 0)
+        created_utc = getattr(submission, 'created_utc', 0)
+        
+        logger.info(f"📊 [Reddit Metadata] ID: {submission.id} | Score: {score} | Comments: {num_comments} | Created: {created_utc}")
+
         return ScoutPost(
             id=submission.id,
             title=submission.title,
@@ -52,9 +59,9 @@ class RedditScout:
             url=submission.url,
             subreddit=submission.subreddit.display_name,
             author=str(submission.author) if submission.author else "[deleted]",
-            created_utc=submission.created_utc,
-            score=submission.score,
-            comment_count=submission.num_comments,
+            created_utc=created_utc,
+            score=score,
+            comment_count=num_comments,
             is_self=submission.is_self,
             top_comments=top_comments
         )
@@ -118,9 +125,11 @@ class RedditScout:
         """
         return False # Not on cooldown
         
-    def scan_my_history(self, limit: int = 20) -> List[dict]:
+    def scan_my_history(self, limit: int = 100, since_utc: float = None) -> List[dict]:
         """
-        Profile Watcher: Fetch recent comments.
+        Profile Watcher: Fetch comments since a given timestamp.
+        - If `since_utc` is None (first run / backfill), fetches everything up to `limit`.
+        - If `since_utc` is set, only returns comments newer than that point (incremental sync).
         Supports both Authenticated (user.me) and Read-Only (redditor name) modes.
         """
         engagements = []
@@ -139,26 +148,30 @@ class RedditScout:
                 return []
                 
             # Fetch comments (works for both me and redditor objects)
-            logger.info(f"Scanning profile: {user}")
+            if since_utc:
+                logger.info(f"Scanning profile: {user} (incremental sync since {datetime.fromtimestamp(since_utc).isoformat()})")
+            else:
+                logger.info(f"Scanning profile: {user} (full backfill, limit={limit})")
             
-            # Limit to last 14 days roughly (fetching more to be safe then filtering)
-            cutoff_date = datetime.now() - timedelta(days=14)
             comments_stream = user.comments.new(limit=limit)
 
             for comment in comments_stream:
-                # 1. Date Check (Optimization: Stop processing if way too old? 
-                # PRAW new() is ordered, so once we hit old posts we could break, 
-                # but 'limit' is small so simple filter is safer)
-                created_dt = datetime.fromtimestamp(comment.created_utc)
-                if created_dt < cutoff_date:
-                    continue
+                created_utc = comment.created_utc
 
-                # Refresh to get latest replies/score
+                # Incremental mode: stop once we hit comments older than our last sync point.
+                # PRAW returns comments newest-first, so this is safe to break on.
+                if since_utc and created_utc <= since_utc:
+                    logger.debug(f"Stopping at {comment.id}: already synced (created {created_utc} <= since {since_utc}).")
+                    break
+
+                logger.info(f"Processing comment {comment.id} from r/{comment.subreddit.display_name}")
+                
+                # Refresh to get latest replies/score — if it fails, use cached data
                 try:
                     comment.refresh()
-                except Exception:
-                    # Sometimes refresh fails on deleted content
-                    continue
+                except Exception as e:
+                    # Log but do NOT skip — PRAW already has basic data from listing
+                    logger.warning(f"Refresh failed for {comment.id} (using cached data): {e}")
                 
                 # Check for "Handshake" (Reply from OP)
                 has_handshake = False

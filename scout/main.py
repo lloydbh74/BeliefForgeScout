@@ -134,9 +134,17 @@ class ScoutEngine:
         
         logger.info("🔭 Starting Profile Watcher...")
         
-        # 1. Scan History
-        engagements = self.reddit.scan_my_history(limit=25)
-        logger.info(f"   > Found {len(engagements)} recent comments.")
+        # 1. Get latest timestamp from DB for incremental sync
+        last_sync_utc = self.db.get_latest_engagement_timestamp()
+        
+        if last_sync_utc:
+            logger.info(f"🔄 Incremental sync: fetching comments since {datetime.fromtimestamp(last_sync_utc).isoformat()}")
+            engagements = self.reddit.scan_my_history(limit=200, since_utc=last_sync_utc)
+        else:
+            logger.info("📦 No prior data — running full historical backfill (limit=1000)")
+            engagements = self.reddit.scan_my_history(limit=1000, since_utc=None)
+        
+        logger.info(f"   > Found {len(engagements)} new/unsynced comments.")
         
         # 2. Load DM Template
         dm_template_json = self.db.get_setting("dm_template", {"text": ""})

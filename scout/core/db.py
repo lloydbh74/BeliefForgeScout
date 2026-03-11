@@ -60,12 +60,12 @@ class ScoutDB:
                 "status": "pending",
                 "created_at": datetime.now().isoformat(),
                 "source": "auto",
-                "score": getattr(post, 'score', 0),
-                "comment_count": getattr(post, 'comment_count', 0),
-                "post_created_at": datetime.fromtimestamp(getattr(post, 'created_utc', 0)).isoformat() if getattr(post, 'created_utc', 0) else None,
-                "prompt_tokens": draft.prompt_tokens,
-                "completion_tokens": draft.completion_tokens,
-                "total_cost": draft.total_cost
+                "score": int(getattr(post, 'score', 0)),
+                "comment_count": int(getattr(post, 'comment_count', 0)),
+                "post_created_at": datetime.fromtimestamp(post.created_utc).isoformat() if hasattr(post, 'created_utc') and post.created_utc else datetime.now().isoformat(),
+                "prompt_tokens": int(draft.prompt_tokens),
+                "completion_tokens": int(draft.completion_tokens),
+                "total_cost": float(draft.total_cost)
             }).execute()
         except Exception as e:
             logger.error(f"Error saving briefing to Supabase: {e}")
@@ -222,9 +222,9 @@ class ScoutDB:
                     engagement_cost = self.supabase.table("scout_engagements").select("total_cost").execute()
                     
                     total_campaign_cost = (
-                        sum(item.get('total_cost', 0) for item in briefing_cost.data) +
-                        sum(item.get('total_cost', 0) for item in processed_cost.data) +
-                        sum(item.get('total_cost', 0) for item in engagement_cost.data)
+                        sum(float(item.get('total_cost') or 0.0) for item in briefing_cost.data) +
+                        sum(float(item.get('total_cost') or 0.0) for item in processed_cost.data) +
+                        sum(float(item.get('total_cost') or 0.0) for item in engagement_cost.data)
                     )
                 except Exception:
                     total_campaign_cost = 0.0
@@ -240,6 +240,29 @@ class ScoutDB:
         except Exception as e:
             logger.error(f"Error calling get_stats: {e}")
             return {"pending": 0, "approved": 0, "discarded": 0, "total_scanned": 0}
+
+    def get_latest_engagement_timestamp(self) -> float:
+        """
+        Returns the UTC timestamp of the most recently recorded engagement.
+        Used for incremental sync — only fetch Reddit comments newer than this.
+        Returns None if no engagements exist (triggers full backfill).
+        """
+        try:
+            response = (
+                self.supabase.table("scout_engagements")
+                .select("posted_at")
+                .order("posted_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if response.data and response.data[0].get("posted_at"):
+                ts_str = response.data[0]["posted_at"]
+                dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                # Convert to UTC timestamp (float)
+                return dt.timestamp()
+        except Exception as e:
+            logger.error(f"Error fetching latest engagement timestamp: {e}")
+        return None
 
     def upsert_engagement(self, data: dict):
         """Insert or Update engagement record, including new advanced fields."""
