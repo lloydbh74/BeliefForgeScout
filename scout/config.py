@@ -28,6 +28,8 @@ class AppConfig:
     db_path: str = "scout.db"
     log_path: str = "logs/scout.log" # NEW: Dedicated log path
     schedule_hours: List[int] = None
+    supabase_url: str = ""
+    supabase_key: str = ""
     
     def __post_init__(self):
         if self.schedule_hours is None:
@@ -57,7 +59,9 @@ class ScoutConfig:
         self.app = AppConfig(
             db_path=os.getenv("SCOUT_DB_PATH", "scout.db"),
             log_path=os.getenv("SCOUT_LOG_PATH", "logs/scout.log"),
-            schedule_hours=hours
+            schedule_hours=hours,
+            supabase_url=os.getenv("SUPABASE_URL", ""),
+            supabase_key=os.getenv("SUPABASE_KEY", "")
         )
         
         # Load Dynamic Settings
@@ -112,6 +116,10 @@ class ScoutConfig:
             errors.append("Missing REDDIT_CLIENT_SECRET")
         if not self.ai.api_key:
             errors.append("Missing OPENROUTER_API_KEY")
+        if not self.app.supabase_url:
+            errors.append("Missing SUPABASE_URL")
+        if not self.app.supabase_key:
+            errors.append("Missing SUPABASE_KEY")
         return errors
 
 # Global instance

@@ -1,12 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
-import json
-from st_copy_to_clipboard import st_copy_to_clipboard
 from streamlit_autorefresh import st_autorefresh
-from datetime import datetime, timedelta
+from datetime import datetime
 import time
-from typing import Optional
 
 from scout.core.db import ScoutDB
 from scout.main import ScoutEngine
@@ -16,6 +13,7 @@ from st_clipboard import copy_to_clipboard
 import streamlit_authenticator as stauth
 import os
 import re
+from apscheduler.triggers.cron import CronTrigger
 
 # Page Config
 st.set_page_config(
@@ -35,7 +33,6 @@ if 'engine' not in st.session_state:
 @st.cache_resource
 def get_system_manager():
     from apscheduler.schedulers.background import BackgroundScheduler
-    from scout.core.system import SystemManager
     
     scheduler = BackgroundScheduler()
     scheduler.start()
@@ -83,7 +80,6 @@ def scheduled_job():
     eng.run_mission()
 
 # Start/Stop Job based on config (Global App Level)
-from apscheduler.triggers.cron import CronTrigger
 sched_enabled = config.settings.get("scheduler_enabled", False)
 job_id = "scout_mission_cron"
 trigger = CronTrigger(hour='7,14,21', minute='0')
@@ -124,9 +120,9 @@ else:
 
     name, authentication_status, username = authenticator.login(location="main")
 
-    if st.session_state["authentication_status"] == False:
+    if st.session_state["authentication_status"] is False:
         st.error("Username/password is incorrect")
-    elif st.session_state["authentication_status"] == None:
+    elif st.session_state["authentication_status"] is None:
         st.warning("Please enter your username and password")
 
 if st.session_state.get("authentication_status"):
@@ -226,7 +222,7 @@ if st.session_state.get("authentication_status"):
             try:
                eng_stats = st.session_state.db.get_engagement_stats()
                handshakes = eng_stats.get('handshakes', 0)
-            except:
+            except Exception:
                handshakes = 0
                
             col2.metric("Handshakes", handshakes)
@@ -300,9 +296,10 @@ if st.session_state.get("authentication_status"):
                     with col1:
                         st.markdown("**Original Post**")
                         st.caption(f"Posted {format_time_ago(item.get('post_created_at'))}")
+                        content = clean_html(item['post_content'])
                         st.markdown(f"""
-                        <div style="background-color: #f8f9fa; padding: 10px; border-radius: 5px; border: 1px solid #dee2e6; color: #333; margin-bottom: 10px; font-size: 0.9em; max-height: 200px; overflow-y: auto;">
-                        {clean_html(item['post_content'])}
+                        <div role="region" aria-label="Original Post Content" tabindex="0" style="background-color: #f8f9fa; padding: 10px; border-radius: 5px; border: 1px solid #dee2e6; color: #333; margin-bottom: 10px; font-size: 0.9em; max-height: 200px; overflow-y: auto;">
+                        {content}
                         </div>
                         """, unsafe_allow_html=True)
                         st.write(f"🔗 [View on Reddit]({item['post_url']})")
@@ -311,9 +308,14 @@ if st.session_state.get("authentication_status"):
                         st.markdown("**Your Action**")
                         st.caption(f"Decision made {format_time_ago(datetime.fromisoformat(item['created_at']).timestamp() if isinstance(item['created_at'], str) else item['created_at'].timestamp())}")
                         
+                        bg_color = '#e9f7ef' if item['status'] != 'discarded' else '#fdf2f2'
+                        border_color = '#c3e6cb' if item['status'] != 'discarded' else '#f5c6cb'
+                        text_color = '#155724' if item['status'] != 'discarded' else '#721c24'
+                        
+                        sanitized_draft = clean_html(item['draft_content'])
                         st.markdown(f"""
-                        <div style="background-color: #e9f7ef if item['status'] != 'discarded' else '#fdf2f2'; padding: 10px; border-radius: 5px; border: 1px solid #c3e6cb; color: #155724; font-size: 0.9em;">
-                        {item['draft_content']}
+                        <div role="region" aria-label="Scout Action" style="background-color: {bg_color}; padding: 10px; border-radius: 5px; border: 1px solid {border_color}; color: {text_color}; font-size: 0.9em;">
+                        {sanitized_draft}
                         </div>
                         """, unsafe_allow_html=True)
                         
@@ -472,7 +474,7 @@ if st.session_state.get("authentication_status"):
                 # Display preview
                 st.markdown("---")
                 st.subheader("📌 Post Preview")
-                badge_html = f'<span style="background-color:#0d47a1; color:white; padding:4px 12px; border-radius:15px; font-size:0.85em; font-weight:bold;">💬 COMMENT</span>'
+                badge_html = '<span role="status" aria-label="Draft Type: Comment" style="background-color:#0d47a1; color:white; padding:4px 12px; border-radius:15px; font-size:0.85em; font-weight:bold;">💬 COMMENT</span>'
                 st.markdown(badge_html, unsafe_allow_html=True)
                 
                 st.markdown(f"**{post.title}**")
@@ -530,7 +532,7 @@ if st.session_state.get("authentication_status"):
                 st.markdown("---")
                 st.subheader("💬 Comment Preview")
                 
-                badge_html = f'<span style="background-color:#b71c1c; color:white; padding:4px 12px; border-radius:15px; font-size:0.85em; font-weight:bold;">↩️ REPLY to @{comment_data["author"]}</span>'
+                badge_html = f'<span role="status" aria-label="Action: Reply to @{comment_data["author"]}" style="background-color:#b71c1c; color:white; padding:4px 12px; border-radius:15px; font-size:0.85em; font-weight:bold;">↩️ REPLY to @{comment_data["author"]}</span>'
                 st.markdown(badge_html, unsafe_allow_html=True)
                 
                 st.markdown(f"**Original Post:** {comment_data['post_title']}")
@@ -758,7 +760,7 @@ if st.session_state.get("authentication_status"):
         # Fetch real stats from DB
         try:
             stats = st.session_state.db.get_stats()
-        except Exception as e:
+        except Exception:
             stats = {"pending": 0, "approved": 0, "discarded": 0, "total_scanned": 0}
     
         # Display Metrics
@@ -795,7 +797,7 @@ if st.session_state.get("authentication_status"):
                         """
                     
                     st.markdown(f"""
-<div class="briefing-card">
+<div role="region" aria-label="Briefing Card" class="briefing-card">
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
 <div>
 <span class="intent-badge {badge_class}">{item['intent'].upper()}</span>
@@ -807,10 +809,10 @@ r/{item['subreddit']} • ⬆️ {item.get('score', 0)} • 💬 {item.get('comm
 </div>
 {reply_context}
 <h4>{item['title']}</h4>
-<div style="max-height: 200px; overflow-y: auto; background-color: #f9f9f9; padding: 10px; border-radius: 5px; margin: 10px 0; font-family: sans-serif; font-size: 0.9em; white-space: pre-wrap; color: #333; border: 1px solid #eee;">
+<div role="region" aria-label="Post Content" tabindex="0" style="max-height: 200px; overflow-y: auto; background-color: #f9f9f9; padding: 10px; border-radius: 5px; margin: 10px 0; font-family: sans-serif; font-size: 0.9em; white-space: pre-wrap; color: #333; border: 1px solid #eee;">
 {clean_html(item['post_content'])}
 </div>
-<a href="{item['post_url']}" target="_blank" style="text-decoration:none; color:#0d47a1; font-weight:bold; font-size:0.9em;">🔗 Open Reddit Source</a>
+<a href="{item['post_url']}" target="_blank" style="text-decoration:underline; color:#0d47a1; font-weight:bold; font-size:0.9em;" aria-label="Open original post on Reddit">🔗 Open Reddit Source</a>
 </div>
 """, unsafe_allow_html=True)
     

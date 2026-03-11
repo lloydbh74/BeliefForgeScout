@@ -1,120 +1,67 @@
-import sqlite3
-import json
 import logging
-from typing import List, Set, Optional
+from typing import List, Optional
 from datetime import datetime
+from supabase import create_client, Client
 
-from .models import ScoutPost, AnalysisResult, DraftReply
+from .models import ScoutPost, DraftReply
 from ..config import config
 
 logger = logging.getLogger(__name__)
 
 class ScoutDB:
     def __init__(self):
-        self.db_path = config.app.db_path
-        self._init_db()
-
-    def _init_db(self):
-        """Create tables if they don't exist."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            
-            # Table to track processed posts (prevent duplicates)
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS processed_posts (
-                    post_id TEXT PRIMARY KEY,
-                    processed_at TIMESTAMP,
-                    intent TEXT,
-                    is_relevant BOOLEAN
-                )
-            ''')
-            
-            # Table for Briefings (Drafts waiting for approval)
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS briefings (
-                    post_id TEXT PRIMARY KEY,
-                    subreddit TEXT,
-                    title TEXT,
-                    post_content TEXT,
-                    post_url TEXT,
-                    draft_content TEXT,
-                    intent TEXT,
-                    status TEXT, -- pending, approved, posted, discarded
-                    created_at TIMESTAMP,
-                    source TEXT DEFAULT 'auto', -- 'auto' or 'manual'
-                    parent_comment_id TEXT,
-                    parent_author TEXT,
-                    score INTEGER DEFAULT 0,
-                    comment_count INTEGER DEFAULT 0,
-                    post_created_at REAL
-                )
-            ''')
-
-            # Migration: Ensure all historically added columns exist
-            columns_to_add = [
-                ("source", "TEXT DEFAULT 'auto'"),
-                ("parent_comment_id", "TEXT"),
-                ("parent_author", "TEXT"),
-                ("score", "INTEGER DEFAULT 0"),
-                ("comment_count", "INTEGER DEFAULT 0"),
-                ("post_created_at", "REAL")
-            ]
-            
-            for col_name, col_type in columns_to_add:
-                try:
-                    cursor.execute(f"ALTER TABLE briefings ADD COLUMN {col_name} {col_type}")
-                except sqlite3.OperationalError:
-                    # Column already exists
-                    pass
-            
-            # Table for Engagements (Profile Watcher)
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS engagements (
-                    comment_id TEXT PRIMARY KEY,
-                    post_id TEXT,
-                    subreddit TEXT,
-                    body_snippet TEXT,
-                    score INTEGER,
-                    reply_count INTEGER,
-                    posted_at TIMESTAMP,
-                    last_updated TIMESTAMP,
-                    has_handshake BOOLEAN DEFAULT 0
-                )
-            ''')
-            conn.commit()
+        if not config.app.supabase_url or not config.app.supabase_key:
+            raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in the environment or .env file.")
+        
+        # Initialize Supabase Client
+        self.supabase: Client = create_client(
+            config.app.supabase_url,
+            config.app.supabase_key
+        )
+        logger.info("✅ Connected to Supabase!")
 
     def is_processed(self, post_id: str) -> bool:
         """Check if post was already scanned."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT 1 FROM processed_posts WHERE post_id = ?", (post_id,))
-            return cursor.fetchone() is not None
+        try:
+            # .limit(1) to avoid fetching large rows unnecessarily
+            response = self.supabase.table("scout_processed_posts").select("post_id").eq("post_id", post_id).limit(1).execute()
+            return len(response.data) > 0
+        except Exception as e:
+            logger.error(f"Error checking is_processed in Supabase: {e}")
+            return False
 
     def mark_processed(self, post_id: str, intent: str, is_relevant: bool):
         """Mark post as processed."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT OR REPLACE INTO processed_posts (post_id, processed_at, intent, is_relevant) VALUES (?, ?, ?, ?)",
-                (post_id, datetime.now(), intent, is_relevant)
-            )
-            conn.commit()
+        try:
+            self.supabase.table("scout_processed_posts").upsert({
+                "post_id": post_id,
+                "processed_at": datetime.now().isoformat(),
+                "intent": intent,
+                "is_relevant": is_relevant
+            }).execute()
+        except Exception as e:
+            logger.error(f"Error marking post as processed: {e}")
 
     def save_briefing(self, post: ScoutPost, draft: DraftReply, intent: str):
         """Save a generated draft as a briefing (automated workflow)."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT OR REPLACE INTO briefings 
-                (post_id, subreddit, title, post_content, post_url, draft_content, intent, status, created_at, source, score, comment_count, post_created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                post.id, post.subreddit, post.title, post.content, post.url, 
-                draft.content, intent, 'pending', datetime.now(), 'auto',
-                getattr(post, 'score', 0), getattr(post, 'comment_count', 0),
-                getattr(post, 'created_utc', 0)
-            ))
-            conn.commit()
+        try:
+            self.supabase.table("scout_briefings").upsert({
+                "post_id": post.id,
+                "subreddit": post.subreddit,
+                "title": post.title,
+                "post_content": post.content,
+                "post_url": post.url,
+                "draft_content": draft.content,
+                "intent": intent,
+                "status": "pending",
+                "created_at": datetime.now().isoformat(),
+                "source": "auto",
+                "score": getattr(post, 'score', 0),
+                "comment_count": getattr(post, 'comment_count', 0),
+                "post_created_at": datetime.fromtimestamp(getattr(post, 'created_utc', 0)).isoformat() if getattr(post, 'created_utc', 0) else None
+            }).execute()
+        except Exception as e:
+            logger.error(f"Error saving briefing to Supabase: {e}")
     
     def save_manual_briefing(self, post_id: str, subreddit: str, title: str, 
                             post_content: str, post_url: str, draft_content: str,
@@ -126,180 +73,186 @@ class ScoutDB:
                             post_created_at: Optional[float] = None):
         """Save a manually generated draft from URL input."""
         logger.info(f"💾 Saving manual briefing for {post_id} (Score: {score}, Intent: {intent})")
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT OR REPLACE INTO briefings 
-                (post_id, subreddit, title, post_content, post_url, draft_content, 
-                 intent, status, created_at, source, parent_comment_id, parent_author,
-                 score, comment_count, post_created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                post_id, subreddit, title, post_content, post_url, draft_content,
-                intent, 'pending', datetime.now(), 'manual', parent_comment_id, parent_author,
-                score, comment_count, post_created_at
-            ))
-            conn.commit()
+        
+        try:
+            post_created_dt = datetime.fromtimestamp(post_created_at).isoformat() if post_created_at else None
+            
+            self.supabase.table("scout_briefings").upsert({
+                "post_id": post_id,
+                "subreddit": subreddit,
+                "title": title,
+                "post_content": post_content,
+                "post_url": post_url,
+                "draft_content": draft_content,
+                "intent": intent,
+                "status": "pending",
+                "created_at": datetime.now().isoformat(),
+                "source": "manual",
+                "parent_comment_id": parent_comment_id,
+                "parent_author": parent_author,
+                "score": score,
+                "comment_count": comment_count,
+                "post_created_at": post_created_dt
+            }).execute()
             logger.info(f"✅ Manual briefing {post_id} saved successfully.")
+        except Exception as e:
+            logger.error(f"Error saving manual briefing: {e}")
     
     def check_duplicate_briefing(self, post_id: str) -> Optional[dict]:
         """Check if a briefing already exists for this post/comment."""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM briefings WHERE post_id = ?", (post_id,))
-            row = cursor.fetchone()
-            return dict(row) if row else None
+        try:
+            response = self.supabase.table("scout_briefings").select("*").eq("post_id", post_id).limit(1).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            logger.error(f"Error checking duplicate: {e}")
+            return None
             
     def get_pending_briefings(self) -> List[dict]:
         """Get all briefings waiting for review."""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM briefings WHERE status = 'pending' ORDER BY created_at DESC")
-            results = [dict(row) for row in cursor.fetchall()]
+        try:
+            response = self.supabase.table("scout_briefings").select("*").eq("status", "pending").order("created_at", desc=True).execute()
+            results = response.data
             logger.info(f"🔍 get_pending_briefings found {len(results)} items.")
             return results
+        except Exception as e:
+            logger.error(f"Error getting pending briefings: {e}")
+            return []
 
     def get_archived_briefings(self, limit: int = 50) -> List[dict]:
         """Get all past decisions (approved, discarded, posted)."""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            # Statuses that are considered archived
-            cursor.execute("""
-                SELECT b.*, e.score as live_score, e.reply_count as live_replies, e.has_handshake
-                FROM briefings b
-                LEFT JOIN engagements e ON b.post_id = e.post_id
-                WHERE b.status IN ('approved', 'discarded', 'posted')
-                ORDER BY b.created_at DESC
-                LIMIT ?
-            """, (limit,))
-            return [dict(row) for row in cursor.fetchall()]
+        try:
+            response = self.supabase.table("scout_briefings").select(
+                "*, scout_engagements(score, reply_count, has_handshake)"
+            ).in_("status", ["approved", "discarded", "posted", "archived"]).order(
+                "created_at", desc=True
+            ).limit(limit).execute()
+            
+            # Flatten or format response for UI
+            formatted_results = []
+            for item in response.data:
+                # Add engagement info if it exists
+                engagements = item.get("scout_engagements", [])
+                engagement = engagements[0] if engagements else {}
+                item["live_score"] = engagement.get("score")
+                item["live_replies"] = engagement.get("reply_count")
+                item["has_handshake"] = engagement.get("has_handshake")
+                
+                # Cleanup joined table key
+                if "scout_engagements" in item:
+                    del item["scout_engagements"]
+                    
+                formatted_results.append(item)
+                
+            return formatted_results
+        except Exception as e:
+            logger.error(f"Error fetching archived briefings: {e}")
+            return []
 
     def reconcile_posted_briefings(self):
         """
         Check if 'approved' briefings now exist in the engagements table.
         If they do, it means the user actually posted them.
         """
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            # 1. Identify approved briefings that have a corresponding engagement
-            cursor.execute("""
-                SELECT post_id FROM briefings 
-                WHERE status = 'approved' 
-                AND post_id IN (SELECT post_id FROM engagements)
-            """)
-            posted_ids = [row[0] for row in cursor.fetchall()]
+        try:
+            # First query to get approved briefings that are in engagements
+            response = self.supabase.table("scout_briefings").select("post_id, scout_engagements!inner(post_id)").eq("status", "approved").execute()
+            
+            posted_ids = [item["post_id"] for item in response.data]
             
             if posted_ids:
                 logger.info(f"🔄 Reconciling {len(posted_ids)} briefings as 'posted'.")
-                # 2. Update their status
-                cursor.executemany(
-                    "UPDATE briefings SET status = 'posted' WHERE post_id = ?",
-                    [(pid,) for pid in posted_ids]
-                )
-                conn.commit()
+                # Step 2: Update their status
+                # Currently Supabase doesn't support bulk update with an IN clause easily via Python client,
+                # but we can iterate since the amount won't be massive in a single run
+                for pid in posted_ids:
+                    self.supabase.table("scout_briefings").update({"status": "posted"}).eq("post_id", pid).execute()
+        except Exception as e:
+            logger.error(f"Error reconciling posted briefings: {e}")
 
     def update_briefing_status(self, post_id: str, status: str, content: Optional[str] = None):
         """Update status (e.g., approved/discarded) and optionally the content (edited)."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        try:
+            update_data = {"status": status}
             if content:
-                cursor.execute(
-                    "UPDATE briefings SET status = ?, draft_content = ? WHERE post_id = ?", 
-                    (status, content, post_id)
-                )
-            else:
-                cursor.execute(
-                    "UPDATE briefings SET status = ? WHERE post_id = ?", 
-                    (status, post_id)
-                )
-            conn.commit()
+                update_data["draft_content"] = content
+                
+            self.supabase.table("scout_briefings").update(update_data).eq("post_id", post_id).execute()
+        except Exception as e:
+            logger.error(f"Error updating status: {e}")
 
     def get_recent_engagements(self, limit: int = 50) -> List[dict]:
         """Fetch recent engagements for the dashboard."""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT * FROM engagements ORDER BY posted_at DESC LIMIT ?", 
-                (limit,)
-            )
-            return [dict(row) for row in cursor.fetchall()]
+        try:
+            response = self.supabase.table("scout_engagements").select("*").order("posted_at", desc=True).limit(limit).execute()
+            return response.data
+        except Exception as e:
+            logger.error(f"Error fetching recent engagements: {e}")
+            return []
 
     def get_stats(self) -> dict:
-        """Get aggregate statistics for the dashboard."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            
-            stats = {
-                "pending": 0,
-                "approved": 0,
-                "discarded": 0,
-                "total_scanned": 0
-            }
-            
-            # Briefing stats
-            cursor.execute("SELECT status, COUNT(*) FROM briefings GROUP BY status")
-            for row in cursor.fetchall():
-                status, count = row
-                if status in stats:
-                    stats[status] = count
-                # Map 'posted' to 'approved' for simplicity if used internally
-                if status == 'posted':
-                     stats['approved'] += count # Accumulate if separate
-            
-            # Total processed
-            cursor.execute("SELECT COUNT(*) FROM processed_posts")
-            stats["total_scanned"] = cursor.fetchone()[0]
-            
-            return stats
+        """Get aggregate statistics for the dashboard via the RPC function."""
+        try:
+            response = self.supabase.rpc('get_dashboard_stats', {}).execute()
+            if response.data:
+                stats = response.data
+                
+                # Transform data to match UI expectations
+                return {
+                    "pending": stats.get("pending_briefings", 0),
+                    "approved": stats.get("approved_briefings", 0),
+                    "discarded": 0, # Not strictly tracked in quick stats
+                    "total_scanned": stats.get("total_scanned_posts", 0)
+                }
+            return {"pending": 0, "approved": 0, "discarded": 0, "total_scanned": 0}
+        except Exception as e:
+            logger.error(f"Error calling get_stats: {e}")
+            return {"pending": 0, "approved": 0, "discarded": 0, "total_scanned": 0}
 
     def upsert_engagement(self, data: dict):
         """Insert or Update engagement record."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT OR REPLACE INTO engagements 
-                (comment_id, post_id, subreddit, body_snippet, score, reply_count, posted_at, last_updated, has_handshake)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                data['id'], data['post_id'], data['subreddit'], data['body'], 
-                data['score'], data['replies'], data['created_utc'], 
-                datetime.now(), data['handshake']
-            ))
-            conn.commit()
+        try:
+            self.supabase.table("scout_engagements").upsert({
+                "comment_id": data['id'],
+                "post_id": data['post_id'],
+                "subreddit": data['subreddit'],
+                "body_snippet": data['body'],
+                "score": data['score'],
+                "reply_count": data['replies'],
+                "posted_at": datetime.fromtimestamp(data['created_utc']).isoformat() if data.get('created_utc') else None,
+                "last_updated": datetime.now().isoformat(),
+                "has_handshake": data['handshake']
+            }).execute()
+        except Exception as e:
+            logger.error(f"Error upserting engagement: {e}")
 
     def get_engagement_stats(self) -> dict:
-        """Get engagement metrics."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        """Get engagement metrics via RPC."""
+        try:
+            response = self.supabase.rpc('get_dashboard_stats', {}).execute()
+            if response.data:
+                stats = response.data
+                
+                return {
+                    "active_conversations": stats.get("active_conversations", 0),
+                    "net_karma": stats.get("net_karma_earned", 0),
+                    "replies_received": 0,  # Not tracked in get_dashboard_stats easily, let's query it
+                    "handshakes": stats.get("total_handshakes", 0)
+                }
+            return {"active_conversations": 0, "net_karma": 0, "replies_received": 0, "handshakes": 0}
             
-            # Aggregate stats
-            cursor.execute('''
-                SELECT 
-                    COUNT(*) as total,
-                    SUM(score) as total_score,
-                    SUM(reply_count) as total_replies,
-                    SUM(has_handshake) as total_handshakes
-                FROM engagements
-            ''')
-            row = cursor.fetchone()
-            
-            return {
-                "active_conversations": row[0] or 0,
-                "net_karma": row[1] or 0,
-                "replies_received": row[2] or 0,
-                "handshakes": row[3] or 0
-            }
+        except Exception as e:
+            logger.error(f"Error fetching engagement stats: {e}")
+            return {"active_conversations": 0, "net_karma": 0, "replies_received": 0, "handshakes": 0}
 
     def clear_campaign_data(self):
         """Wipe discovered posts and briefings (reset campaign)."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM briefings")
-            cursor.execute("DELETE FROM processed_posts")
-            cursor.execute("DELETE FROM engagements")
-            conn.commit()
-        logger.info("💥 Campaign data cleared (briefings, processed_posts, engagements).")
+        try:
+            # Note: To clear records in Supabase we can do deletes without conditions IF no RLS limits us
+            # but usually it's better to explicitly match against something. 
+            # We'll use eq or neq trick.
+            self.supabase.table("scout_briefings").delete().neq("post_id", "nothing").execute()
+            self.supabase.table("scout_engagements").delete().neq("comment_id", "nothing").execute()
+            self.supabase.table("scout_processed_posts").delete().neq("post_id", "nothing").execute()
+            logger.info("💥 Campaign data cleared (briefings, processed_posts, engagements).")
+        except Exception as e:
+            logger.error(f"Error clearing campaign data: {e}")

@@ -1,7 +1,6 @@
 """
 Unit tests for RedditURLParser
 """
-import pytest
 from scout.core.url_parser import RedditURLParser
 
 

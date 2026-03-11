@@ -1,6 +1,5 @@
 import praw
 import logging
-import time
 from typing import List, Set
 from datetime import datetime, timedelta
 
@@ -157,7 +156,7 @@ class RedditScout:
                 # Refresh to get latest replies/score
                 try:
                     comment.refresh()
-                except Exception as e:
+                except Exception:
                     # Sometimes refresh fails on deleted content
                     continue
                 
@@ -171,7 +170,7 @@ class RedditScout:
                             if reply.author == submission_author:
                                 has_handshake = True
                                 break
-                except:
+                except Exception:
                     pass # Deleted/removed context
                             
                 engagements.append({
@@ -215,7 +214,7 @@ class RedditScout:
             
         except Exception as e:
             logger.error(f"Failed to fetch post {post_id}: {e}")
-            raise Exception(f"Post not found or has been deleted")
+            raise Exception("Post not found or has been deleted")
     
     def fetch_comment_by_id(self, comment_id: str, post_id: str) -> dict:
         """
@@ -255,7 +254,7 @@ class RedditScout:
             
         except Exception as e:
             logger.error(f"Failed to fetch comment {comment_id}: {e}")
-            raise Exception(f"Comment not found or has been deleted")
+            raise Exception("Comment not found or has been deleted")
     
     def get_comment_context(self, comment_id: str, depth: int = 3) -> list:
         """

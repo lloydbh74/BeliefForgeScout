@@ -1,9 +1,7 @@
 import pytest
-import os
 import shutil
 import tempfile
 from pathlib import Path
-import sqlite3
 
 @pytest.fixture
 def temp_env_dir():

@@ -1,0 +1,15 @@
+[tool.ruff]
+exclude = [
+    ".agent",
+    ".git",
+    ".gemini",
+    "venv",
+    ".venv"
+]
+
+[tool.mypy]
+ignore_missing_imports = true
+exclude = [
+    ".*"
+]
+

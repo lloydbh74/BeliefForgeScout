@@ -1,6 +1,4 @@
-import pytest
 from unittest.mock import patch, MagicMock
-import os
 from scout.core.system import SystemManager
 
 def test_save_settings_preserves_auth_hash(temp_env_dir):
