@@ -121,22 +121,66 @@ class ScoutEngine:
         
     def run_profile_watcher(self):
         """
-        Execute the Profile Watcher mission (Engagement Tracking).
+        Execute the Profile Watcher mission (Engagement Tracking + DM Drafting).
         """
+        import random
+        from datetime import datetime, timedelta
+        
         logger.info("🔭 Starting Profile Watcher...")
         
         # 1. Scan History
         engagements = self.reddit.scan_my_history(limit=25)
         logger.info(f"   > Found {len(engagements)} recent comments.")
         
-        # 2. Update DB
+        # 2. Load DM Template
+        dm_template_json = self.db.get_setting("dm_template", {"text": ""})
+        dm_template = dm_template_json.get("text", "")
+        
+        # 3. Update DB & Draft DMs
         new_handshakes = 0
         for eng in engagements:
+            # Check if this handshake already has a DM drafted/sent
+            existing = self.db.supabase.table("scout_engagements").select("status").eq("comment_id", eng['id']).execute()
+            status = existing.data[0]['status'] if existing.data else None
+            
+            if eng['handshake'] and status not in ['draft', 'scheduled', 'sent']:
+                logger.info(f"🤝 New handshake detected from @{eng.get('replier_author')}!")
+                
+                # A. Bot Detection
+                bot_score = self.copywriter.detect_bot_score(eng['body'])
+                eng['bot_score'] = bot_score
+                
+                if bot_score < 0.8:
+                    # B. Generate DM Draft
+                    # Extract parent briefing for context if possible
+                    briefing = self.db.check_duplicate_briefing(eng['post_id'])
+                    topic = briefing.get('title', 'your recent post') if briefing else "your recent thread"
+                    
+                    dm_content = self.copywriter.generate_personalized_dm(
+                        template=dm_template,
+                        user_data={'author': eng.get('replier_author', 'founder')},
+                        topic=topic,
+                        context_body=eng['body']
+                    )
+                    
+                    # C. Schedule with randomized delay (15-45 mins)
+                    delay_mins = random.randint(15, 45)
+                    scheduled_at = (datetime.now() + timedelta(minutes=delay_mins)).isoformat()
+                    
+                    eng['dm_content'] = dm_content
+                    eng['scheduled_at'] = scheduled_at
+                    eng['status'] = 'draft'
+                    eng['engagement_type'] = 'dm'
+                    logger.info(f"   > DM drafted and scheduled for {scheduled_at} (Bot Score: {bot_score})")
+                else:
+                    logger.warning(f"   > High bot score ({bot_score}) for @{eng.get('replier_author')}. Skipping DM draft.")
+                    eng['status'] = 'ignored'
+
             self.db.upsert_engagement(eng)
             if eng['handshake']:
                 new_handshakes += 1
         
-        # 3. Reconcile Briefings (Mark as 'posted')
+        # 4. Reconcile Briefings (Mark as 'posted')
         self.db.reconcile_posted_briefings()
                 
         logger.info(f"🏁 Profile Watcher Complete. {new_handshakes} handshakes active.")

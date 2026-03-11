@@ -23,11 +23,24 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Initialize
+# Initialize DB & Engine
 if 'db' not in st.session_state:
-    st.session_state.db = ScoutDB()
+    try:
+        st.session_state.db = ScoutDB()
+    except Exception as e:
+        st.error(f"Failed to connect to Supabase: {e}")
+        st.stop()
+        
 if 'engine' not in st.session_state:
+    from scout.main import ScoutEngine
     st.session_state.engine = ScoutEngine()
+
+from scout.core.reddit_client import RedditScout
+from scout.core.copywriter import Copywriter
+if 'reddit_scout' not in st.session_state:
+    st.session_state.reddit_scout = RedditScout()
+if 'copywriter' not in st.session_state:
+    st.session_state.copywriter = Copywriter()
 
 # --- GLOBAL INITIALIZATION (Background Persistence) ---
 @st.cache_resource
@@ -334,7 +347,7 @@ if st.session_state.get("authentication_status"):
         st.markdown("Monitoring your recent comments for replies (Handshakes).")
         
         if st.button("🔭 Scan My Profile Now"):
-            with st.spinner("Scanning your Reddit history..."):
+            with st.spinner("Scanning your Reddit history and drafting DMs..."):
                 total, new_handshakes = st.session_state.engine.run_profile_watcher()
                 if new_handshakes > 0:
                     st.balloons()
@@ -350,17 +363,80 @@ if st.session_state.get("authentication_status"):
         
         st.markdown("---")
         
+        # 📨 DM Outbox Section
+        st.subheader("📨 DM Outbox (Pending DMs)")
+        st.caption("Personalized drafts for new handshakes. Approve or edit before sending.")
+        
+        pending_dms = st.session_state.db.get_pending_dms()
+        if not pending_dms:
+            st.info("No pending DMs. Keep engaging to trigger handshakes!")
+        else:
+            for dm in pending_dms:
+                with st.expander(f"✉️ Reply from @{dm.get('replier_author', 'Unknown')} in r/{dm['subreddit']}", expanded=True):
+                    # Bot Score Indicator
+                    bot_score = dm.get('bot_score', 0)
+                    score_color = "green" if bot_score < 0.3 else "orange" if bot_score < 0.6 else "red"
+                    st.markdown(f"**AI Bot Score:** :{score_color}[{bot_score:.2f}]")
+                    if bot_score > 0.6:
+                        st.warning("⚠️ High bot probability detected. Proceed with caution.")
+                    
+                    st.write(f"**Their reply:** {dm.get('replier_body', 'No reply body found.')}")
+                    
+                    # DM Content Editor
+                    dm_text = st.text_area(
+                        "Proposed DM",
+                        value=dm.get('dm_content', ''),
+                        height=150,
+                        key=f"dm_edit_{dm['comment_id']}"
+                    )
+                    
+                    # Scheduled Time Check
+                    scheduled_at = pd.to_datetime(dm['scheduled_at'])
+                    is_ready = datetime.now().astimezone() > scheduled_at.astimezone()
+                    
+                    c1, c2, c3 = st.columns([1, 1, 2])
+                    with c1:
+                        if st.button("🚀 Send Now", key=f"send_{dm['comment_id']}", type="primary", disabled=not is_ready):
+                            if st.session_state.reddit_scout.send_dm(
+                                recipient=dm['replier_author'],
+                                subject="Question about your Reddit post",
+                                message=dm_text
+                            ):
+                                st.session_state.db.supabase.table("scout_engagements").update({
+                                    "status": "sent",
+                                    "dm_content": dm_text,
+                                    "last_updated": datetime.now().isoformat()
+                                }).eq("comment_id", dm['comment_id']).execute()
+                                st.success("DM sent successfully!")
+                                time.sleep(1)
+                                st.rerun()
+                    
+                    with c2:
+                        if st.button("🗑️ Discard", key=f"discard_dm_{dm['comment_id']}"):
+                            st.session_state.db.supabase.table("scout_engagements").update({
+                                "status": "discarded"
+                            }).eq("comment_id", dm['comment_id']).execute()
+                            st.rerun()
+                            
+                    with c3:
+                        if not is_ready:
+                            st.caption(f"⏳ Human-mimic delay active. Ready {scheduled_at.strftime('%H:%M:%S')}")
+                        else:
+                            st.caption("✅ Ready to send.")
+
+        st.markdown("---")
+        
         # Table View
-        with st.expander("Detailed Engagement Log", expanded=True):
+        with st.expander("Detailed Engagement Log", expanded=False):
             try:
                  data = st.session_state.db.get_recent_engagements(limit=50)
                  df = pd.DataFrame(data)
                      
                  if not df.empty:
                      # Clean up display
-                     df['posted_at'] = pd.to_datetime(df['posted_at'], unit='s')
+                     df['posted_at'] = pd.to_datetime(df['posted_at'])
                      st.dataframe(
-                         df[['subreddit', 'body_snippet', 'score', 'reply_count', 'has_handshake', 'posted_at']],
+                         df[['subreddit', 'body_snippet', 'score', 'reply_count', 'has_handshake', 'status', 'bot_score', 'posted_at']],
                          use_container_width=True
                      )
                  else:
@@ -590,62 +666,80 @@ if st.session_state.get("authentication_status"):
                         st.rerun()
     
     if page == "Settings":
-        st.title("⚙️ Settings")
-        st.markdown("Configure your scout safely. Keys are saved to `scout/.env` and persist.")
+        st.title("⚙️ Settings & Configuration")
+        st.markdown("Manage your Scout's identity, targets, and messaging strategies.")
         
-        # Import config to get current values (loaded from .env on startup)
+        # Import config to get current values
         from scout.config import config
         
+        # Load persistent templates from Supabase settings
+        db = st.session_state.db
+        dm_template_json = db.get_setting("dm_template", {"text": ""})
+        current_dm_template = dm_template_json.get("text", "")
+
+        tab1, tab2, tab3, tab4 = st.tabs(["🔑 API & Auth", "🔭 Scraper", "📣 Messaging", "⚙️ System"])
+
         with st.form("settings_form"):
-            st.subheader("🤖 AI Brain (OpenRouter)")
-            st.caption("Required for screening and drafting. (Get key from openrouter.ai)")
-            
-            # Default to session state (if just edited) OR config (if loaded from disk)
-            current_op_key = st.session_state.get('openrouter_key', config.ai.api_key or '')
-            op_key = st.text_input("OpenRouter API Key", type="password", value=current_op_key)
-            
-            st.subheader("📡 Reddit Access (Read-Only OK)")
-            st.caption("You only need Client ID & Secret to scrape. Username required for Profile Watcher.")
-            
-            current_r_id = st.session_state.get('reddit_client_id', config.reddit.client_id or '')
-            current_r_secret = st.session_state.get('reddit_client_secret', config.reddit.client_secret or '')
-            current_r_user = st.session_state.get('reddit_username', config.settings.get("reddit_username", ""))
-            
-            r_id = st.text_input("Client ID", value=current_r_id)
-            r_secret = st.text_input("Client Secret", type="password", value=current_r_secret)
-            r_user = st.text_input("Reddit Username (for Engagement Tracking)", value=current_r_user, placeholder="e.g. belief_forge_guy")
-    
-            st.subheader("🔔 Notifications (Telegram)")
-            st.caption("Get alerted when new opportunities are found.")
-            current_tg_token = st.session_state.get('telegram_token', config.settings.get("telegram_token", ""))
-            current_tg_chat = st.session_state.get('telegram_chat_id', config.settings.get("telegram_chat_id", ""))
-            
-            tg_token = st.text_input("Bot Token", type="password", value=current_tg_token)
-            tg_chat = st.text_input("Chat ID", value=current_tg_chat)
-    
+            with tab1:
+                st.subheader("🤖 AI Brain (OpenRouter)")
+                st.caption("The core engine for screening posts and drafting replies. Get your key at [openrouter.ai](https://openrouter.ai).")
+                current_op_key = st.session_state.get('openrouter_key', config.ai.api_key or '')
+                op_key = st.text_input("OpenRouter API Key", type="password", value=current_op_key)
+                
+                st.subheader("📡 Reddit Access")
+                st.caption("Required to scan subreddits and monitor your profile for engagement.")
+                current_r_id = st.session_state.get('reddit_client_id', config.reddit.client_id or '')
+                current_r_secret = st.session_state.get('reddit_client_secret', config.reddit.client_secret or '')
+                current_r_user = st.session_state.get('reddit_username', config.settings.get("reddit_username", ""))
+                
+                r_id = st.text_input("Client ID", value=current_r_id)
+                r_secret = st.text_input("Client Secret", type="password", value=current_r_secret)
+                r_user = st.text_input("Reddit Username", value=current_r_user, placeholder="e.g. belief_forge_guy")
+
+            with tab2:
+                st.subheader("🎯 Scout Targets")
+                st.caption("List the subreddits you want to monitor for opportunities.")
+                current_subs = st.session_state.get('target_subreddits', ", ".join(config.settings.get("target_subreddits", [])))
+                subs_input = st.text_area("Subreddits (comma separated)", value=current_subs, height=100)
+                
+                st.subheader("🧭 Pathfinder Keywords")
+                st.caption("Words and phrases that trigger the Scout's attention.")
+                current_keywords = st.session_state.get('pathfinder_keywords', ", ".join(config.settings.get("pathfinder_keywords", [])))
+                keywords_input = st.text_area("Keywords (comma separated)", value=current_keywords, height=100)
+
+            with tab3:
+                st.subheader("✉️ Outreach Templates")
+                st.caption("Used for deeply personalized Direct Messages once a 'Handshake' is detected.")
+                st.info("Placeholders: {{name}} = User handle, {{topic}} = Post subject, {{deep_insight}} = AI generated point about their specific comment.")
+                
+                dm_template_input = st.text_area(
+                    "Default DM Template", 
+                    value=current_dm_template, 
+                    height=200,
+                    help="This template is used as the base for all outreach DMs."
+                )
+                
+                st.subheader("🧠 Brain Voice")
+                st.caption("The high-level personality and instructions for the AI Copywriter.")
+                current_prompt = st.session_state.get('system_prompt', config.settings.get("system_prompt", ""))
+                prompt_input = st.text_area("System Prompt", value=current_prompt, height=200)
+
+            with tab4:
+                st.subheader("🔔 Notifications (Telegram)")
+                st.caption("Get real-time alerts on your phone.")
+                current_tg_token = st.session_state.get('telegram_token', config.settings.get("telegram_token", ""))
+                current_tg_chat = st.session_state.get('telegram_chat_id', config.settings.get("telegram_chat_id", ""))
+                tg_token = st.text_input("Bot Token", type="password", value=current_tg_token)
+                tg_chat = st.text_input("Chat ID", value=current_tg_chat)
+                
+                st.subheader("⏰ Automation")
+                st.caption("Run scans automatically in the background.")
+                current_sched = st.session_state.get('scheduler_enabled', config.settings.get("scheduler_enabled", False))
+                sched_enabled_ui = st.checkbox("Enable Auto-Scout (scheduled runs)", value=current_sched)
+
             st.markdown("---")
-            st.subheader("🎯 Scout Targets")
-            st.caption("Subreddits to monitor (comma separated).")
-            current_subs = st.session_state.get('target_subreddits', ", ".join(config.settings.get("target_subreddits", [])))
-            subs_input = st.text_area("Subreddits", value=current_subs, height=100)
+            submitted = st.form_submit_button("💾 Save All Settings", type="primary")
             
-            st.subheader("🧭 Pathfinder Keywords")
-            st.caption("Keywords to hunt for in the wild (comma separated).")
-            current_keywords = st.session_state.get('pathfinder_keywords', ", ".join(config.settings.get("pathfinder_keywords", [])))
-            keywords_input = st.text_area("Keywords", value=current_keywords, height=60)
-    
-            st.markdown("---")
-            st.subheader("⏰ Automation")
-            current_sched = st.session_state.get('scheduler_enabled', config.settings.get("scheduler_enabled", False))
-            sched_enabled_ui = st.checkbox("Enable Auto-Scout (07:00, 14:00, 21:00)", value=current_sched)
-    
-            st.markdown("---")
-            st.subheader("🧠 Brain Voice (System Prompt)")
-            st.caption("The instruction given to the AI copywriter.")
-            current_prompt = st.session_state.get('system_prompt', config.settings.get("system_prompt", ""))
-            prompt_input = st.text_area("System Prompt", value=current_prompt, height=300)
-            
-            submitted = st.form_submit_button("Save Settings")
             if submitted:
                 # Update Session State
                 st.session_state['openrouter_key'] = op_key
@@ -659,7 +753,10 @@ if st.session_state.get("authentication_status"):
                 st.session_state['telegram_token'] = tg_token
                 st.session_state['telegram_chat_id'] = tg_chat
                 
-                # Prepare Data
+                # Save to Supabase settings table
+                db.update_setting("dm_template", {"text": dm_template_input}, "Outreach DM Template")
+                
+                # Prepare local config data
                 subs_list = [s.strip() for s in subs_input.split(",") if s.strip()]
                 keywords_list = [k.strip() for k in keywords_input.split(",") if k.strip()]
                 

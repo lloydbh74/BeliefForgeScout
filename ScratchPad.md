@@ -4,3 +4,10 @@ Phase 2: UI & WCAG 2.1 AA Compliance Semantic HTML: Ensure correct use of landma
 Phase 3: Adversarial Review, Identify three edge cases where these changes will break for a user—one for a screen reader user, one for a mobile user, and one for a low-bandwidth user. Final Output: Provide a "Go/No-Go" status. For every "No-Go," provide the file name, line number, and the specific WCAG success criterion or logic principle violated.
 
 Once done push to the repo, using /deploy please.   
+
+
+TD List
+- Tidy up the settings by categorizing them and adding descriptions
+- Make sure the API callas are correctly priced and the cost of running is calculated correctly
+- Refator to the cloudflare version of the app and maximum optimisation for mobile UX and performance. Maybe as a PWA.
+- 

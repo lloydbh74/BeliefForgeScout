@@ -189,6 +189,15 @@ class ScoutDB:
             logger.error(f"Error fetching recent engagements: {e}")
             return []
 
+    def get_pending_dms(self) -> List[dict]:
+        """Fetch all engagements that have a drafted DM ready for review."""
+        try:
+            response = self.supabase.table("scout_engagements").select("*").eq("status", "draft").order("scheduled_at", desc=False).execute()
+            return response.data
+        except Exception as e:
+            logger.error(f"Error fetching pending DMs: {e}")
+            return []
+
     def get_stats(self) -> dict:
         """Get aggregate statistics for the dashboard via the RPC function."""
         try:
@@ -209,9 +218,9 @@ class ScoutDB:
             return {"pending": 0, "approved": 0, "discarded": 0, "total_scanned": 0}
 
     def upsert_engagement(self, data: dict):
-        """Insert or Update engagement record."""
+        """Insert or Update engagement record, including new advanced fields."""
         try:
-            self.supabase.table("scout_engagements").upsert({
+            payload = {
                 "comment_id": data['id'],
                 "post_id": data['post_id'],
                 "subreddit": data['subreddit'],
@@ -221,9 +230,46 @@ class ScoutDB:
                 "posted_at": datetime.fromtimestamp(data['created_utc']).isoformat() if data.get('created_utc') else None,
                 "last_updated": datetime.now().isoformat(),
                 "has_handshake": data['handshake']
-            }).execute()
+            }
+            
+            # Add advanced fields if provided
+            if 'bot_score' in data:
+                payload['bot_score'] = data['bot_score']
+            if 'engagement_type' in data:
+                payload['engagement_type'] = data['engagement_type']
+            if 'status' in data:
+                payload['status'] = data['status']
+            if 'scheduled_at' in data:
+                payload['scheduled_at'] = data['scheduled_at']
+            if 'dm_content' in data:
+                payload['dm_content'] = data['dm_content']
+
+            self.supabase.table("scout_engagements").upsert(payload).execute()
         except Exception as e:
             logger.error(f"Error upserting engagement: {e}")
+
+    def get_setting(self, key: str, default: any = None) -> any:
+        """Fetch a setting from the scout_settings table."""
+        try:
+            response = self.supabase.table("scout_settings").select("value").eq("key", key).execute()
+            if response.data:
+                return response.data[0]['value']
+            return default
+        except Exception as e:
+            logger.error(f"Error fetching setting {key}: {e}")
+            return default
+
+    def update_setting(self, key: str, value: any, description: Optional[str] = None):
+        """Update or create a setting."""
+        try:
+            payload = {"key": key, "value": value}
+            if description:
+                payload["description"] = description
+            payload["updated_at"] = datetime.now().isoformat()
+            
+            self.supabase.table("scout_settings").upsert(payload).execute()
+        except Exception as e:
+            logger.error(f"Error updating setting {key}: {e}")
 
     def get_engagement_stats(self) -> dict:
         """Get engagement metrics via RPC."""

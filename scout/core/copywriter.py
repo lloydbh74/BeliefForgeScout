@@ -152,3 +152,81 @@ class Copywriter:
                 strategy_used="error",
                 status="error"
             )
+    def detect_bot_score(self, text: str) -> float:
+        """
+        Analyze a comment and return a bot probability score (0.0 to 1.0).
+        """
+        logger.info("Analyzing bot score for comment...")
+        
+        system_prompt = """
+        You are an expert at identifying AI-generated spam and bot behavior on Reddit.
+        Analyze the provided text and return ONLY a single float between 0.0 (definitely human) and 1.0 (definitely AI).
+        
+        Indicators of a bot:
+        - Excessive generic praise.
+        - Perfect grammar but lack of nuance.
+        - Repetitive sentence structures.
+        - Non-sequiturs that sound vaguely relevant.
+        """
+        
+        user_prompt = f"Text to analyze: \"{text}\"\n\nBot Score (0.0 - 1.0):"
+        
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_tokens=10
+            )
+            score_str = response.choices[0].message.content.strip()
+            # Extract float
+            import re
+            match = re.search(r"(\d+\.\d+|\d+)", score_str)
+            if match:
+                return float(match.group(1))
+            return 0.5 # Neutral fallback
+        except Exception as e:
+            logger.error(f"Bot detection failed: {e}")
+            return 0.0
+
+    def generate_personalized_dm(self, template: str, user_data: dict, topic: str, context_body: str) -> str:
+        """
+        Draft a deeply personalized DM using the provided template and context.
+        """
+        logger.info(f"Generating personalized DM for @{user_data.get('author')}...")
+        
+        system_prompt = """
+        You are 'Belief Forge'. Your goal is to personalize a recruitment message for a potential beta tester.
+        """
+        
+        user_prompt = f"""
+        TEMPLATE:
+        {template}
+        
+        USER DATA:
+        Name/Handle: @{user_data.get('author')}
+        Topic: {topic}
+        Their Comment: {context_body}
+        
+        TASK:
+        Replace the placeholders in the template with contextually relevant information.
+        Pay special attention to '{{deep_insight}}' or personalized hooks. 
+        Ensure the '{{deep_insight}}' mentions a specific detail from their comment to prove authenticity.
+        
+        Return the FINAL message only.
+        """
+        
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ]
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            logger.error(f"DM generation failed: {e}")
+            return template # Fallback to template if generation fails

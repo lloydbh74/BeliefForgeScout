@@ -162,6 +162,8 @@ class RedditScout:
                 
                 # Check for "Handshake" (Reply from OP)
                 has_handshake = False
+                replier_author = None
+                replier_body = None
                 try:
                     submission_author = comment.submission.author
                     if submission_author:
@@ -169,6 +171,8 @@ class RedditScout:
                         for reply in comment.replies:
                             if reply.author == submission_author:
                                 has_handshake = True
+                                replier_author = str(reply.author)
+                                replier_body = reply.body
                                 break
                 except Exception:
                     pass # Deleted/removed context
@@ -181,7 +185,9 @@ class RedditScout:
                     "score": comment.score,
                     "replies": len(comment.replies),
                     "created_utc": comment.created_utc,
-                    "handshake": has_handshake
+                    "handshake": has_handshake,
+                    "replier_author": replier_author,
+                    "replier_body": replier_body
                 })
                 
         except Exception as e:
@@ -256,6 +262,22 @@ class RedditScout:
             logger.error(f"Failed to fetch comment {comment_id}: {e}")
             raise Exception("Comment not found or has been deleted")
     
+    def send_dm(self, recipient: str, subject: str, message: str) -> bool:
+        """
+        Send a direct message to a redditor.
+        """
+        try:
+            logger.info(f"📤 Sending DM to @{recipient}...")
+            self.reddit.redditor(recipient).message(
+                subject=subject,
+                message=message
+            )
+            logger.info(f"✅ DM sent to @{recipient}")
+            return True
+        except Exception as e:
+            logger.error(f"❌ Failed to send DM to @{recipient}: {e}")
+            return False
+
     def get_comment_context(self, comment_id: str, depth: int = 3) -> list:
         """
         Get ancestor comments for reply context.
