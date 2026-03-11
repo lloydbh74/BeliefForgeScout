@@ -13,6 +13,8 @@ from st_clipboard import copy_to_clipboard
 import streamlit_authenticator as stauth
 import os
 import re
+from scout.core.reddit_client import RedditScout
+from scout.core.copywriter import Copywriter
 from apscheduler.triggers.cron import CronTrigger
 
 # Page Config
@@ -35,8 +37,7 @@ if 'engine' not in st.session_state:
     from scout.main import ScoutEngine
     st.session_state.engine = ScoutEngine()
 
-from scout.core.reddit_client import RedditScout
-from scout.core.copywriter import Copywriter
+# Reddit and Copywriter are now at top
 if 'reddit_scout' not in st.session_state:
     st.session_state.reddit_scout = RedditScout()
 if 'copywriter' not in st.session_state:
@@ -227,9 +228,15 @@ if st.session_state.get("authentication_status"):
         
         # Status Widget
         if page == "Briefings":
-            st.subheader("System Status")
             col1, col2 = st.columns(2)
-            col1.metric("Run Cost", "$0.00") # Placeholder
+            # Get Global Stats
+            try:
+                global_stats = st.session_state.db.get_stats()
+                run_cost = global_stats.get('total_cost', 0.0)
+            except Exception:
+                run_cost = 0.0
+            
+            col1.metric("Campaign Cost", f"${run_cost:.4f}")
             
             # Get Engagement Stats
             try:
@@ -339,6 +346,13 @@ if st.session_state.get("authentication_status"):
                             sc1.metric("Karma", item.get('live_score', 0))
                             sc2.metric("Replies", item.get('live_replies', 0))
                             
+                            st.divider()
+                            st.markdown("💸 **API Usage**")
+                            ac1, ac2, ac3 = st.columns(3)
+                            ac1.caption(f"Prompt: {item.get('prompt_tokens', 0)}")
+                            ac2.caption(f"Comp: {item.get('completion_tokens', 0)}")
+                            ac3.caption(f"Cost: ${item.get('total_cost', 0.0):.6f}")
+                            
                             if item.get('has_handshake'):
                                 st.success("🤝 Handshake detected! This thread is active.")
 
@@ -436,7 +450,7 @@ if st.session_state.get("authentication_status"):
                      # Clean up display
                      df['posted_at'] = pd.to_datetime(df['posted_at'])
                      st.dataframe(
-                         df[['subreddit', 'body_snippet', 'score', 'reply_count', 'has_handshake', 'status', 'bot_score', 'posted_at']],
+                         df[['subreddit', 'body_snippet', 'score', 'reply_count', 'has_handshake', 'status', 'bot_score', 'total_cost', 'posted_at']],
                          use_container_width=True
                      )
                  else:

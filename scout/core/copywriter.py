@@ -12,6 +12,19 @@ class Copywriter:
     def __init__(self):
         self._client = None
         self.model = config.ai.tier2_model
+        # Rates per 1M tokens (USD)
+        self.rates = {
+            "gpt-4o": {"prompt": 5.0, "completion": 15.0},
+            "anthropic/claude-3.5-sonnet": {"prompt": 3.0, "completion": 15.0},
+            "openai/gpt-3.5-turbo": {"prompt": 0.5, "completion": 1.5},
+            "meta-llama/llama-3-8b": {"prompt": 0.05, "completion": 0.05},
+            "meta-llama/llama-3-70b": {"prompt": 0.59, "completion": 0.79}
+        }
+
+    def _calculate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
+        rate = self.rates.get(self.model, {"prompt": 1.0, "completion": 3.0}) # Fallback to rough avg
+        cost = (prompt_tokens * rate["prompt"] / 1_000_000) + (completion_tokens * rate["completion"] / 1_000_000)
+        return round(cost, 6)
 
     @property
     def client(self):
@@ -64,11 +77,18 @@ class Copywriter:
             content = response.choices[0].message.content.strip()
             content = normalize_whitespace(content)
             
+            # Usage
+            usage = response.usage
+            cost = self._calculate_cost(usage.prompt_tokens, usage.completion_tokens)
+            
             return DraftReply(
                 post_id=post.id,
                 content=content,
                 strategy_used=f"Tier 2 ({intent})",
-                status="pending"
+                status="pending",
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+                total_cost=cost
             )
 
         except Exception as e:
@@ -137,11 +157,18 @@ class Copywriter:
             content = response.choices[0].message.content.strip()
             content = normalize_whitespace(content)
             
+            # Usage
+            usage = response.usage
+            cost = self._calculate_cost(usage.prompt_tokens, usage.completion_tokens)
+            
             return DraftReply(
                 post_id=comment_data['post_id'],
                 content=content,
                 strategy_used=f"Reply to @{comment_data['author']}",
-                status="pending"
+                status="pending",
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+                total_cost=cost
             )
         
         except Exception as e:
@@ -152,9 +179,9 @@ class Copywriter:
                 strategy_used="error",
                 status="error"
             )
-    def detect_bot_score(self, text: str) -> float:
+    def detect_bot_score(self, text: str) -> dict:
         """
-        Analyze a comment and return a bot probability score (0.0 to 1.0).
+        Analyze a comment and return a bot probability score AND usage data.
         """
         logger.info("Analyzing bot score for comment...")
         
@@ -181,15 +208,25 @@ class Copywriter:
                 max_tokens=10
             )
             score_str = response.choices[0].message.content.strip()
+            
+            # Usage
+            usage = response.usage
+            cost = self._calculate_cost(usage.prompt_tokens, usage.completion_tokens)
+            
             # Extract float
             import re
             match = re.search(r"(\d+\.\d+|\d+)", score_str)
-            if match:
-                return float(match.group(1))
-            return 0.5 # Neutral fallback
+            score = float(match.group(1)) if match else 0.5
+            
+            return {
+                "score": score,
+                "prompt_tokens": usage.prompt_tokens,
+                "completion_tokens": usage.completion_tokens,
+                "total_cost": cost
+            }
         except Exception as e:
             logger.error(f"Bot detection failed: {e}")
-            return 0.0
+            return {"score": 0.0, "prompt_tokens": 0, "completion_tokens": 0, "total_cost": 0.0}
 
     def generate_personalized_dm(self, template: str, user_data: dict, topic: str, context_body: str) -> str:
         """
@@ -226,7 +263,18 @@ class Copywriter:
                     {"role": "user", "content": user_prompt}
                 ]
             )
-            return response.choices[0].message.content.strip()
+            content = response.choices[0].message.content.strip()
+            
+            # Usage
+            usage = response.usage
+            cost = self._calculate_cost(usage.prompt_tokens, usage.completion_tokens)
+            
+            return {
+                "content": content,
+                "prompt_tokens": usage.prompt_tokens,
+                "completion_tokens": usage.completion_tokens,
+                "total_cost": cost
+            }
         except Exception as e:
             logger.error(f"DM generation failed: {e}")
-            return template # Fallback to template if generation fails
+            return {"content": template, "prompt_tokens": 0, "completion_tokens": 0, "total_cost": 0.0}

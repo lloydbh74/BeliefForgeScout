@@ -82,7 +82,13 @@ class ScoutEngine:
         relevant_posts = []
         for result in analysis_results:
             # Mark as processed in DB
-            self.db.mark_processed(result.post_id, result.intent, result.is_relevant)
+            # Mark as processed in DB with screening costs
+            self.db.mark_processed(
+                result.post_id, result.intent, result.is_relevant,
+                prompt_tokens=result.prompt_tokens,
+                completion_tokens=result.completion_tokens,
+                total_cost=result.total_cost
+            )
             
             if result.is_relevant and result.intent != 'ignore':
                 # Find the original post object
@@ -147,27 +153,37 @@ class ScoutEngine:
                 logger.info(f"🤝 New handshake detected from @{eng.get('replier_author')}!")
                 
                 # A. Bot Detection
-                bot_score = self.copywriter.detect_bot_score(eng['body'])
+                bot_data = self.copywriter.detect_bot_score(eng['body'])
+                bot_score = bot_data['score']
                 eng['bot_score'] = bot_score
+                
+                # Cumulative cost for this engagement
+                eng['prompt_tokens'] = bot_data['prompt_tokens']
+                eng['completion_tokens'] = bot_data['completion_tokens']
+                eng['total_cost'] = bot_data['total_cost']
                 
                 if bot_score < 0.8:
                     # B. Generate DM Draft
-                    # Extract parent briefing for context if possible
                     briefing = self.db.check_duplicate_briefing(eng['post_id'])
                     topic = briefing.get('title', 'your recent post') if briefing else "your recent thread"
                     
-                    dm_content = self.copywriter.generate_personalized_dm(
+                    dm_result = self.copywriter.generate_personalized_dm(
                         template=dm_template,
                         user_data={'author': eng.get('replier_author', 'founder')},
                         topic=topic,
                         context_body=eng['body']
                     )
                     
+                    # Accumulate DM cost
+                    eng['dm_content'] = dm_result['content']
+                    eng['prompt_tokens'] += dm_result['prompt_tokens']
+                    eng['completion_tokens'] += dm_result['completion_tokens']
+                    eng['total_cost'] += dm_result['total_cost']
+                    
                     # C. Schedule with randomized delay (15-45 mins)
                     delay_mins = random.randint(15, 45)
                     scheduled_at = (datetime.now() + timedelta(minutes=delay_mins)).isoformat()
                     
-                    eng['dm_content'] = dm_content
                     eng['scheduled_at'] = scheduled_at
                     eng['status'] = 'draft'
                     eng['engagement_type'] = 'dm'

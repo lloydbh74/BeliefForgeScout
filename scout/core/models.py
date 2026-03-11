@@ -35,6 +35,9 @@ class AnalysisResult:
     intent: str  # 'distress', 'strategy', 'venting', 'ignore'
     confidence: float
     reasoning: str
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_cost: float = 0.0
     
 @dataclass
 class DraftReply:
@@ -43,3 +46,6 @@ class DraftReply:
     content: str
     strategy_used: str
     status: str = "pending" # pending, approved, posted, discarded
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_cost: float = 0.0

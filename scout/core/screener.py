@@ -12,6 +12,20 @@ class Screener:
     def __init__(self):
         self._client = None
         self.model = config.ai.tier1_model
+        # Rates per 1M tokens (USD)
+        self.rates = {
+            "gpt-4o": {"prompt": 5.0, "completion": 15.0},
+            "anthropic/claude-3.5-sonnet": {"prompt": 3.0, "completion": 15.0},
+            "openai/gpt-3.5-turbo": {"prompt": 0.5, "completion": 1.5},
+            "meta-llama/llama-3-8b": {"prompt": 0.05, "completion": 0.05},
+            "meta-llama/llama-3-70b": {"prompt": 0.59, "completion": 0.79},
+            "mistralai/mistral-7b-instruct": {"prompt": 0.05, "completion": 0.05}
+        }
+
+    def _calculate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
+        rate = self.rates.get(self.model, {"prompt": 0.5, "completion": 1.5}) # Fallback to cheap rate
+        cost = (prompt_tokens * rate["prompt"] / 1_000_000) + (completion_tokens * rate["completion"] / 1_000_000)
+        return round(cost, 6)
 
     @property
     def client(self):
@@ -72,6 +86,16 @@ class Screener:
             content = response.choices[0].message.content
             parsed = json.loads(content)
             
+            # Usage
+            usage = response.usage
+            total_cost = self._calculate_cost(usage.prompt_tokens, usage.completion_tokens)
+            
+            # Distribute cost per post (simple avg for batch)
+            count = len(posts)
+            per_post_prompt = usage.prompt_tokens // count
+            per_post_comp = usage.completion_tokens // count
+            per_post_cost = total_cost / count
+            
             # Map back to AnalysisResult objects
             results_map = {item['post_id']: item for item in parsed.get('results', [])}
             
@@ -83,11 +107,24 @@ class Screener:
                         is_relevant=res.get('is_relevant', False),
                         intent=res.get('intent', 'ignore'),
                         confidence=res.get('confidence', 0.0),
-                        reasoning=res.get('reasoning', '')
+                        reasoning=res.get('reasoning', ''),
+                        prompt_tokens=per_post_prompt,
+                        completion_tokens=per_post_comp,
+                        total_cost=per_post_cost
                     ))
                 else:
                     # Fallback if LLM missed one
                     logger.warning(f"Screener missed ID {post.id} in batch response.")
+                    results.append(AnalysisResult(
+                        post_id=post.id,
+                        is_relevant=False,
+                        intent='ignore',
+                        confidence=0.0,
+                        reasoning='Missed in batch',
+                        prompt_tokens=per_post_prompt,
+                        completion_tokens=per_post_comp,
+                        total_cost=per_post_cost
+                    ))
 
         except Exception as e:
             logger.error(f"Screener batch analysis failed: {e}")

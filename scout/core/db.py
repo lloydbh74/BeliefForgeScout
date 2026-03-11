@@ -30,14 +30,18 @@ class ScoutDB:
             logger.error(f"Error checking is_processed in Supabase: {e}")
             return False
 
-    def mark_processed(self, post_id: str, intent: str, is_relevant: bool):
-        """Mark post as processed."""
+    def mark_processed(self, post_id: str, intent: str, is_relevant: bool, 
+                       prompt_tokens: int = 0, completion_tokens: int = 0, total_cost: float = 0.0):
+        """Mark post as processed including screening cost."""
         try:
             self.supabase.table("scout_processed_posts").upsert({
                 "post_id": post_id,
                 "processed_at": datetime.now().isoformat(),
                 "intent": intent,
-                "is_relevant": is_relevant
+                "is_relevant": is_relevant,
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_cost": total_cost
             }).execute()
         except Exception as e:
             logger.error(f"Error marking post as processed: {e}")
@@ -58,7 +62,10 @@ class ScoutDB:
                 "source": "auto",
                 "score": getattr(post, 'score', 0),
                 "comment_count": getattr(post, 'comment_count', 0),
-                "post_created_at": datetime.fromtimestamp(getattr(post, 'created_utc', 0)).isoformat() if getattr(post, 'created_utc', 0) else None
+                "post_created_at": datetime.fromtimestamp(getattr(post, 'created_utc', 0)).isoformat() if getattr(post, 'created_utc', 0) else None,
+                "prompt_tokens": draft.prompt_tokens,
+                "completion_tokens": draft.completion_tokens,
+                "total_cost": draft.total_cost
             }).execute()
         except Exception as e:
             logger.error(f"Error saving briefing to Supabase: {e}")
@@ -92,7 +99,10 @@ class ScoutDB:
                 "parent_author": parent_author,
                 "score": score,
                 "comment_count": comment_count,
-                "post_created_at": post_created_dt
+                "post_created_at": post_created_dt,
+                "prompt_tokens": 0, # Manual doesn't track tokens via this direct method yet
+                "completion_tokens": 0,
+                "total_cost": 0.0
             }).execute()
             logger.info(f"✅ Manual briefing {post_id} saved successfully.")
         except Exception as e:
@@ -205,12 +215,26 @@ class ScoutDB:
             if response.data:
                 stats = response.data
                 
-                # Transform data to match UI expectations
+                # Calculate total cost from tables
+                try:
+                    briefing_cost = self.supabase.table("scout_briefings").select("total_cost").execute()
+                    processed_cost = self.supabase.table("scout_processed_posts").select("total_cost").execute()
+                    engagement_cost = self.supabase.table("scout_engagements").select("total_cost").execute()
+                    
+                    total_campaign_cost = (
+                        sum(item.get('total_cost', 0) for item in briefing_cost.data) +
+                        sum(item.get('total_cost', 0) for item in processed_cost.data) +
+                        sum(item.get('total_cost', 0) for item in engagement_cost.data)
+                    )
+                except Exception:
+                    total_campaign_cost = 0.0
+
                 return {
                     "pending": stats.get("pending_briefings", 0),
                     "approved": stats.get("approved_briefings", 0),
-                    "discarded": 0, # Not strictly tracked in quick stats
-                    "total_scanned": stats.get("total_scanned_posts", 0)
+                    "discarded": 0,
+                    "total_scanned": stats.get("total_scanned_posts", 0),
+                    "total_cost": total_campaign_cost
                 }
             return {"pending": 0, "approved": 0, "discarded": 0, "total_scanned": 0}
         except Exception as e:
@@ -243,6 +267,14 @@ class ScoutDB:
                 payload['scheduled_at'] = data['scheduled_at']
             if 'dm_content' in data:
                 payload['dm_content'] = data['dm_content']
+            
+            # Cost Tracking
+            if 'prompt_tokens' in data:
+                payload['prompt_tokens'] = payload.get('prompt_tokens', 0) + data['prompt_tokens']
+            if 'completion_tokens' in data:
+                payload['completion_tokens'] = payload.get('completion_tokens', 0) + data['completion_tokens']
+            if 'total_cost' in data:
+                payload['total_cost'] = payload.get('total_cost', 0) + data['total_cost']
 
             self.supabase.table("scout_engagements").upsert(payload).execute()
         except Exception as e:
