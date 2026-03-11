@@ -207,6 +207,66 @@ class RedditScout:
             logger.error(f"Profile scan failed: {e}")
             
         return engagements
+
+    def check_handshakes_for_comments(self, comment_ids: List[str]) -> List[dict]:
+        """
+        Takes a list of PRAW comment IDs and checks if OP has replied to them.
+        Returns a list of dictionaries with engagement data for those that HAVE a new handshake.
+        Useful for polling older comments that didn't get an immediate reply.
+        """
+        new_handshakes = []
+        try:
+            # Prefix with t1_ for PRAW info fetch
+            fullnames = [f"t1_{cid}" for cid in comment_ids]
+            
+            # Use chunks of 100 to respect PRAW's info limit (if list is large)
+            chunk_size = 100
+            for i in range(0, len(fullnames), chunk_size):
+                chunk = fullnames[i:i + chunk_size]
+                comments = self.reddit.info(fullnames=chunk)
+                
+                for comment in comments:
+                    try:
+                        # We need full objects to get replies tree
+                        comment.refresh()
+                    except Exception as e:
+                        logger.warning(f"Pass 2: Refresh failed for {comment.id}: {e}")
+                        continue
+                        
+                    has_handshake = False
+                    replier_author = None
+                    replier_body = None
+                    try:
+                        submission_author = comment.submission.author
+                        if submission_author:
+                            comment.replies.replace_more(limit=0)
+                            for reply in comment.replies:
+                                if reply.author == submission_author:
+                                    has_handshake = True
+                                    replier_author = str(reply.author)
+                                    replier_body = reply.body
+                                    break
+                    except Exception:
+                        pass # Deleted or inaccessible context
+                        
+                    if has_handshake:
+                        new_handshakes.append({
+                            "id": comment.id,
+                            "post_id": comment.submission.id,
+                            "subreddit": comment.subreddit.display_name,
+                            "body": comment.body[:100],
+                            "score": comment.score,
+                            "replies": len(comment.replies),
+                            "created_utc": comment.created_utc,
+                            "handshake": True,
+                            "replier_author": replier_author,
+                            "replier_body": replier_body
+                        })
+                        
+        except Exception as e:
+            logger.error(f"Failed checking handshakes in Pass 2: {e}")
+            
+        return new_handshakes
     
     def fetch_post_by_id(self, post_id: str, subreddit: str = None) -> ScoutPost:
         """

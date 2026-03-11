@@ -208,6 +208,15 @@ class ScoutDB:
             logger.error(f"Error fetching pending DMs: {e}")
             return []
 
+    def get_pending_handshake_comments(self) -> List[dict]:
+        """Fetch all engagements that do not yet have a handshake (reply from OP)."""
+        try:
+            response = self.supabase.table("scout_engagements").select("*").eq("has_handshake", False).execute()
+            return response.data
+        except Exception as e:
+            logger.error(f"Error fetching pending handshake comments: {e}")
+            return []
+
     def get_stats(self) -> dict:
         """Get aggregate statistics for the dashboard via the RPC function."""
         try:

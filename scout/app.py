@@ -417,8 +417,8 @@ if st.session_state.get("authentication_status"):
                     )
                     
                     # Scheduled Time Check
-                    scheduled_at = pd.to_datetime(dm['scheduled_at'])
-                    is_ready = datetime.now().astimezone() > scheduled_at.astimezone()
+                    scheduled_at = pd.to_datetime(dm['scheduled_at'], utc=True)
+                    is_ready = pd.Timestamp.now(tz='UTC') >= scheduled_at
                     
                     c1, c2, c3 = st.columns([1, 1, 2])
                     with c1:

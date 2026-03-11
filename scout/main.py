@@ -146,7 +146,23 @@ class ScoutEngine:
         
         logger.info(f"   > Found {len(engagements)} new/unsynced comments.")
         
-        # 2. Load DM Template
+        # 2. Re-poll existing comments without handshakes (Pass 2)
+        logger.info("♻️ Pass 2: Checking existing comments for new handshakes...")
+        pending_comments = self.db.get_pending_handshake_comments()
+        if pending_comments:
+            comment_ids = [c['comment_id'] for c in pending_comments]
+            logger.info(f"   > Re-checking {len(comment_ids)} prior comments lacking handshakes.")
+            new_handshake_engagements = self.reddit.check_handshakes_for_comments(comment_ids)
+            if new_handshake_engagements:
+                logger.info(f"   > Found {len(new_handshake_engagements)} new handshakes from old comments!")
+                # Add these to the list so they get their DMs drafted and DB states updated below
+                engagements.extend(new_handshake_engagements)
+            else:
+                logger.info("   > No new handshakes found on old comments.")
+        else:
+            logger.info("   > No pending comments to re-check.")
+        
+        # 3. Load DM Template
         dm_template_json = self.db.get_setting("dm_template", {"text": ""})
         dm_template = dm_template_json.get("text", "")
         
