@@ -7,7 +7,9 @@ Once done push to the repo, using /deploy please.
 
 
 TD List
-- Tidy up the settings by categorizing them and adding descriptions
-- Make sure the API callas are correctly priced and the cost of running is calculated correctly
+- Need to add a link to the post in the engagement list so I can verify the DM reference is correct. Also a time since reply so I can see how immediate the DM will be.
+- Some of the post links when approving just go to a picture or video. We need to ALWAYS link to the post and not the picture or video.
 - Refator to the cloudflare version of the app and maximum optimisation for mobile UX and performance. Maybe as a PWA.
 - 
+
+

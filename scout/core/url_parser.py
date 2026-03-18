@@ -3,6 +3,7 @@ Reddit URL Parser
 Extracts post_id, comment_id, and subreddit from Reddit URLs.
 """
 import re
+import requests
 from typing import Optional, Dict
 from urllib.parse import urlparse
 
@@ -12,6 +13,7 @@ class RedditURLParser:
     # Reddit URL patterns
     POST_PATTERN = r'/r/([^/]+)/comments/([a-z0-9]+)(?:/[^/]+/?)?$'
     COMMENT_PATTERN = r'/r/([^/]+)/comments/([a-z0-9]+)/[^/]+/([a-z0-9]+)/?'
+
     
     @staticmethod
     def validate_url(url: str) -> bool:
@@ -56,6 +58,17 @@ class RedditURLParser:
         """
         if not RedditURLParser.validate_url(url):
             return None
+        
+        # Automatically resolve short share links (e.g., /s/...)
+        if '/s/' in url or 'sh.reddit.com' in url:
+            try:
+                headers = {'User-Agent': 'BeliefForgeScout/1.0'}
+                r = requests.get(url, headers=headers, allow_redirects=True, timeout=5)
+                # Ensure we strip query parameters (like utm_source, etc.) 
+                # so the trailing slashes work cleanly with the regex patterns
+                url = r.url.split('?')[0]
+            except Exception:
+                pass
         
         try:
             parsed = urlparse(url)
