@@ -406,6 +406,30 @@ if st.session_state.get("authentication_status"):
                     if bot_score > 0.6:
                         st.warning("⚠️ High bot probability detected. Proceed with caution.")
                     
+                    # Lead Age & Date
+                    if dm.get('posted_at'):
+                        posted_dt = pd.to_datetime(dm['posted_at'])
+                        if posted_dt.tzinfo is None:
+                            posted_dt = posted_dt.tz_localize('UTC')
+                        
+                        now = pd.Timestamp.now(tz='UTC')
+                        diff = now - posted_dt
+                        
+                        age_str = format_time_ago(dm['posted_at'])
+                        date_str = posted_dt.strftime('%b %d, %Y at %H:%M UTC')
+                        
+                        if diff.days == 0:
+                            hotness = "🔥 Hot (Under 24h)"
+                            color = "red"
+                        elif diff.days <= 3:
+                            hotness = "⏳ Warm (1-3 days)"
+                            color = "orange"
+                        else:
+                            hotness = "❄️ Cold (> 3 days)"
+                            color = "blue"
+                            
+                        st.markdown(f"**Lead Status:** :{color}[{hotness}] | **Age:** {age_str} | **Created:** {date_str}")
+                    
                     st.write(f"**Their reply:** {dm.get('replier_body', 'No reply body found.')}")
                     
                     # DM Content Editor
